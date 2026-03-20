@@ -15,6 +15,7 @@
     "bun-types": "latest"
   },
   "dependencies": {
+    "libpg-query": "^17.7.3",
     "pg": "^8.11.0"
   }
 }
