@@ -1,0 +1,10 @@
+[deploy]
+lock_retries = 3
+lock_timeout = "10s"
+idle_in_transaction_session_timeout = "15min"
+search_path = "public,extensions"
+verify = false
+mode = "tag"
+
+[batch]
+max_dead_tuple_ratio = 0.10

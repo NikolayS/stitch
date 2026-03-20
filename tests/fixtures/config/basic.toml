@@ -1,0 +1,18 @@
+[analysis]
+skip = ["SA001", "SA002"]
+error_on_warn = false
+max_affected_rows = 100000
+pg_version = "16"
+
+[analysis.rules.SA003]
+max_affected_rows = 50000
+
+[analysis.rules.SA010]
+severity = "warn"
+
+[analysis.overrides."deploy/backfill_tiers.sql"]
+skip = ["SA010"]
+
+[analysis.overrides."deploy/large_migration.sql"]
+skip = ["SA003", "SA010"]
+max_affected_rows = 500000
