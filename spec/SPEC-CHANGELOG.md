@@ -4,6 +4,76 @@ All notable changes to the stitch spec and codebase will be documented here.
 
 ## [Unreleased]
 
+## [SPEC 0.4] — 2026-03-20
+
+Round 2 expert review findings addressed. Four reviewers: PG internals expert, Sqitch power user, production SRE, static analysis engineer. Focus on resolving contradictions, closing OPEN markers, and correcting factual errors.
+
+### Critical fixes
+
+- **Advisory lock design resolved:** Resolved xact vs session lock contradiction. Use `pg_advisory_lock` (session-level) as default — only option that works across multi-transaction deploys (`--mode change`) and non-transactional changes. Lock key: `pg_advisory_lock(hashtext('stitch_deploy_' || project_name))`. Require direct connections for deploy (not PgBouncer in transaction mode). Apply to revert/rebase/checkout too, not just deploy.
+
+- **`now()` is STABLE, not VOLATILE:** Removed `now()` from SA002 volatile examples — `now()` returns transaction start time and is classified STABLE. Corrected Problem 1 example text. Correct volatile examples: `random()`, `gen_random_uuid()`, `clock_timestamp()`, `txid_current()`. Updated SA002 test fixtures accordingly.
+
+- **Change ID algorithm documented:** Closed OPEN marker. Algorithm: SHA-1 of `"change <length>\0project <project>\nchange <name>\nnote <note>\nplanner <planner> <<email>>\ndate <date>\nrequire <dep>\nconflict <dep>\n\n"`. Source: `App::Sqitch::Plan::Change->id`.
+
+- **Tag ID computation added:** New addition. SHA-1 of `"tag <length>\0project <project>\ntag <tag_name>\nchange <change_id>\nplanner <planner> <<email>>\ndate <date>\n\n"`.
+
+- **script_hash algorithm documented:** Closed OPEN marker. Uses git-style blob hashing: `SHA-1("blob <size>\0<content>")`. Raw file bytes, no line-ending normalization.
+
+### Important fixes
+
+- **SA003 USING clause corrected:** Changed from "always requires a rewrite" to "PostgreSQL rewrites the table to evaluate the expression, even when types are binary-compatible." Added missing safe casts: `char(N)` to `varchar`/`text`, `numeric(P,S)` to unconstrained `numeric`. Documented that `int` to `bigint` is NOT safe (rewrite required).
+
+- **SA016 lock level corrected:** Fixed from `AccessExclusiveLock` to `ShareLock` (PG < 16) / `ShareUpdateExclusiveLock` (PG 16+).
+
+- **Hybrid rule classification introduced:** New `type: "hybrid"` for rules with both static and connected concerns. SA009 (static: NOT VALID detection; connected: index check), SA017 (static: fire on SET NOT NULL; connected: check for CHECK constraint), SA018 (static: fire on ADD PRIMARY KEY; connected: check for pre-existing index).
+
+- **`--mode all` + non-transactional behavior specified:** Non-transactional changes break the transaction (COMMIT before, execute, BEGIN after). Warning emitted when `--mode all` used with non-transactional changes.
+
+- **Non-transactional write-ahead tracking:** Before executing non-transactional DDL, write "pending" record to `stitch.pending_changes`. After success, update to "complete" and write sqitch tracking. On next deploy, check for pending non-transactional changes and verify state.
+
+- **`--no-transaction` is a script comment in Sqitch:** Fixed — Sqitch uses `-- sqitch-no-transaction` comment in deploy script first line. stitch supports both the script comment (Sqitch compat) and plan file pragma.
+
+- **Inline suppression scoping specified:** Unclosed block extends to EOF with warning, single-line comment attaches to preceding statement, comma-separated rule IDs supported, unknown rules produce warning, `all` not supported.
+
+- **SA020 expanded scope:** Now covers `DROP INDEX CONCURRENTLY` and `REINDEX CONCURRENTLY` in addition to `CREATE INDEX CONCURRENTLY`. Standalone mode behavior specified: warn on any CONCURRENTLY usage.
+
+- **Reporter format schemas defined:** JSON output schema (envelope with metadata, findings, summary), GitHub annotations (`::error file=...` format), GitLab Code Quality JSON schema documented. `--exit-code` renamed to `--strict`.
+
+- **Tracking schema DDL completeness:** Added `PRIMARY KEY (change_id, dependency)` to `sqitch.dependencies`. Added `CHECK` constraint and note about no PK on `sqitch.events`. Added `UNIQUE (project, tag)` to `sqitch.tags`. Added `ON DELETE CASCADE` where Sqitch uses it.
+
+- **ALTER TYPE ADD VALUE PG 12+ gotcha documented:** Even in PG 12+ where it can run in a transaction, the new enum value is not usable within the same transaction.
+
+- **Trigger recursion guard changed:** Replaced `pg_trigger_depth() < 2` with session variable approach: `SET LOCAL stitch.syncing = 'true'` / `current_setting('stitch.syncing', true)`. More robust in environments with existing triggers.
+
+- **search_path OPEN resolved:** Use database/role default (Sqitch-compatible). Override available via `stitch.toml`.
+
+- **application_name added:** Set `application_name = 'stitch/<command>/<project>'` on deploy/batch connections for production debugging.
+
+- **Advisory locks for revert/rebase/checkout:** Not just deploy — any command modifying tracking state or executing DDL.
+
+- **idle_in_transaction_session_timeout:** Changed from 0 (unlimited) to configurable generous value (default 10 minutes).
+
+- **Non-transactional statement_timeout:** Separate configurable timeout (default 4 hours) for non-transactional DDL.
+
+- **Lock retry for CI:** Added `--lock-retries N` with exponential backoff (default 0 = no retry).
+
+- **PgBouncer detection improved:** Use `SHOW pool_mode` (PgBouncer-specific). Added `connection_type` config option for non-PgBouncer poolers.
+
+- **PG 13 partition discussion simplified:** Since test matrix is PG 14+, trigger inheritance is always available. Removed per-partition installation discussion.
+
+- **`--force-rule SA003` added:** Per-rule deploy-time override alongside blanket `--force`.
+
+- **VACUUM pressure threshold defined:** Ratio `n_dead_tup / (n_live_tup + n_dead_tup)` exceeding configurable percentage (default 10%).
+
+### Other changes
+
+- Version bumped to 0.4
+- Architecture tree fixed: `SPEC.md` path updated to `spec/SPEC.md`
+- `sqitch.conf` `[deploy]` section documented (`verify`, `mode` defaults)
+- SA002 test fixtures updated: `now()` moved from trigger/ to no_trigger/, `clock_timestamp()` added to trigger/
+- Remaining OPEN markers (4): SA003 safe-cast list (needs `pg_cast` audit), logical replication + expand/contract, PGQ vs SKIP LOCKED, DD12 psql vs node-postgres
+
 ## [SPEC 0.3] — 2026-03-20
 
 Comprehensive update based on expert review from four specialists: PG internals expert, Sqitch power user, production SRE, and static analysis engineer. All critical and important findings addressed.

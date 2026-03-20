@@ -1,6 +1,6 @@
 # stitch — Product Specification
 
-- **Version:** 0.3 (draft)
+- **Version:** 0.4 (draft)
 - **Status:** Pre-development — spec review in progress, no implementation yet
 - **License:** Apache 2.0
 - **Changelog:** [SPEC-CHANGELOG.md](SPEC-CHANGELOG.md)
@@ -66,7 +66,7 @@ Sequential-numbered files, XML/YAML config, JVM runtime. Wrong philosophy. We ta
 
 ### Problem 1: Dangerous migrations reach production undetected
 
-`ALTER TABLE orders ADD COLUMN processed_at timestamptz NOT NULL DEFAULT '2024-01-01'::timestamptz` — on PostgreSQL < 11 this rewrites the entire table (any `ADD COLUMN ... DEFAULT` causes a table rewrite). On a 500GB orders table at 3am, that's an outage. And even on PG 11+, volatile defaults like `DEFAULT now()` still cause a full table rewrite. No existing migration tool catches this before deploy.
+`ALTER TABLE orders ADD COLUMN processed_at timestamptz NOT NULL DEFAULT '2024-01-01'::timestamptz` — on PostgreSQL < 11 this rewrites the entire table (any `ADD COLUMN ... DEFAULT` causes a table rewrite). On a 500GB orders table at 3am, that's an outage. And even on PG 11+, volatile defaults like `DEFAULT gen_random_uuid()` still cause a full table rewrite (note: `now()` is `STABLE`, not volatile, so it does NOT cause a rewrite on PG 11+). No existing migration tool catches this before deploy.
 
 ### Problem 2: Sqitch is Perl
 
@@ -176,9 +176,43 @@ add_users [add_users@v1.0] 2024-02-01T00:00:00Z user <user@example.com> # rework
 
 **Cross-project dependencies:** Dependencies may reference changes in other projects using `project:change` syntax. At deploy time, stitch checks the tracking tables for the other project's changes.
 
-**Change ID computation:** Each change has a unique change ID. Sqitch computes this as a SHA-1 hash from the change content (name, dependencies, and plan context). stitch must compute identical IDs. Since `change_id` is the primary key in `sqitch.changes`, any divergence will break the mid-deploy handoff scenario.
+**Change ID computation:** Each change has a unique change ID. Sqitch computes this as a SHA-1 hash using a git-style object format (from `App::Sqitch::Plan::Change->id`). The input to SHA-1 is:
 
-**OPEN:** Document the exact SHA-1 input format for change ID computation by examining Sqitch source code. The algorithm must be byte-for-byte identical.
+```
+change <content_length>\0<content>
+```
+
+Where `\0` is a null byte, `<content_length>` is the decimal string length of `<content>`, and `<content>` is the concatenation of:
+```
+project <project_name>\n
+change <change_name>\n
+note <note>\n
+planner <planner_name> <<planner_email>>\n
+date <planned_at_iso8601>\n
+require <dep1>\n
+require <dep2>\n
+conflict <conflict1>\n
+\n
+```
+Require and conflict lines appear once per dependency, in order. The trailing `\n` (blank line) is always present.
+
+stitch must compute identical IDs. Since `change_id` is the primary key in `sqitch.changes`, any divergence will break the mid-deploy handoff scenario.
+
+**Tag ID computation:** Each tag also has a SHA-1 ID (stored as `tag_id` in `sqitch.tags`). The format is similar:
+
+```
+tag <content_length>\0<content>
+```
+
+Where `<content>` is:
+```
+project <project_name>\n
+tag <tag_name>\n
+change <change_id>\n
+planner <planner_name> <<planner_email>>\n
+date <planned_at_iso8601>\n
+\n
+```
 
 ### R3 — Tracking schema compatibility
 
@@ -204,17 +238,18 @@ CREATE TABLE sqitch.changes (
 **`sqitch.dependencies`:**
 ```sql
 CREATE TABLE sqitch.dependencies (
-    change_id    TEXT NOT NULL REFERENCES sqitch.changes(change_id),
+    change_id    TEXT NOT NULL REFERENCES sqitch.changes(change_id) ON DELETE CASCADE,
     type         TEXT NOT NULL,  -- 'require' or 'conflict'
     dependency   TEXT NOT NULL,
-    dependency_id TEXT
+    dependency_id TEXT,
+    PRIMARY KEY (change_id, dependency)
 );
 ```
 
 **`sqitch.events`:**
 ```sql
 CREATE TABLE sqitch.events (
-    event           TEXT        NOT NULL,  -- 'deploy', 'revert', 'fail'
+    event           TEXT        NOT NULL CHECK (event IN ('deploy', 'revert', 'fail')),
     change_id       TEXT        NOT NULL,
     change          TEXT        NOT NULL,
     project         TEXT        NOT NULL REFERENCES sqitch.projects(project),
@@ -230,6 +265,7 @@ CREATE TABLE sqitch.events (
     planner_email   TEXT        NOT NULL
 );
 ```
+Note: Sqitch's events table uses ordering by `committed_at` and does not define a traditional primary key. stitch follows the same convention for compatibility.
 
 **`sqitch.tags`:**
 ```sql
@@ -237,14 +273,15 @@ CREATE TABLE sqitch.tags (
     tag_id          TEXT        PRIMARY KEY,
     tag             TEXT        NOT NULL,
     project         TEXT        NOT NULL REFERENCES sqitch.projects(project),
-    change_id       TEXT        NOT NULL REFERENCES sqitch.changes(change_id),
+    change_id       TEXT        NOT NULL REFERENCES sqitch.changes(change_id) ON DELETE CASCADE,
     note            TEXT        NOT NULL DEFAULT '',
     committed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     committer_name  TEXT        NOT NULL,
     committer_email TEXT        NOT NULL,
     planned_at      TIMESTAMPTZ NOT NULL,
     planner_name    TEXT        NOT NULL,
-    planner_email   TEXT        NOT NULL
+    planner_email   TEXT        NOT NULL,
+    UNIQUE (project, tag)
 );
 ```
 
@@ -259,15 +296,15 @@ CREATE TABLE sqitch.projects (
 );
 ```
 
-**`script_hash` computation:** Sqitch computes a SHA-1 hash of the deploy script file content and stores it in `sqitch.changes.script_hash`. This allows detection of modified scripts (used in `sqitch status` to show "modified" scripts and in `--strict` mode). stitch must compute identical hashes.
+**`script_hash` computation:** Sqitch computes `script_hash` using git-style blob hashing: `SHA-1("blob <size>\0<content>")` where `<size>` is the decimal string length of the file content and `\0` is a null byte. This is the same format as `git hash-object`. stitch must compute identical hashes. If stitch hashes just the raw file content without the "blob" prefix, `stitch status` will falsely report every script as "modified" compared to what Sqitch recorded.
 
-**OPEN:** Document exact `script_hash` computation — does Sqitch hash raw file bytes, or does it normalize line endings? How does this interact with snapshot includes (where the executed content differs from the file on disk)?
+The hash is computed from the raw file bytes (no line-ending normalization). For snapshot includes, the hash is computed from the deploy script file itself, not the assembled content after `\i` resolution.
 
 **Registry schema creation:** When stitch first deploys to a database, it must create the `sqitch` schema and all tracking tables using DDL identical to what Sqitch produces. The creation should use `CREATE SCHEMA IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` for idempotent first-deploy, and should be protected by an advisory lock to handle concurrent first-deploys from multiple CI runners.
 
 ### R4 — Static analysis on deploy
 
-`stitch deploy` must run static analysis before executing any SQL. On `error`-severity findings, deploy must be blocked (unless `--force` is passed). On `warn`, deploy proceeds with output.
+`stitch deploy` must run static analysis before executing any SQL. On `error`-severity findings, deploy must be blocked (unless `--force` is passed). On `warn`, deploy proceeds with output. `--force-rule SA003` bypasses a specific rule while keeping all other guards active (can be specified multiple times). `--force` remains as the blanket "bypass everything" escape hatch.
 
 ### R5 — Machine-readable output
 
@@ -303,13 +340,14 @@ Analyze migration SQL before deploy and flag dangerous patterns. Moved from v1.1
 **Rule classification:**
 - **Static rules** — can run on SQL alone, no database connection needed. These work in standalone linter mode (`stitch analyze file.sql`).
 - **Connected rules** — require a database connection for schema introspection (e.g., checking indexes, row counts). When no connection is available, connected rules are silently skipped with an `info`-level note.
+- **Hybrid rules** — have both a static check (always runs) and a connected check (runs when a database connection is available). In standalone mode, only the static portion fires. With a connection, the connected portion may refine, suppress, or add to the static findings.
 
 **Rules:**
 
 | Rule ID | Severity | Type | Trigger | Why dangerous |
 |---------|----------|------|---------|---------------|
 | `SA001` | error | static | `ADD COLUMN ... NOT NULL` without default | Fails outright on populated tables (`ERROR: column contains null values`). On PG < 11, `ADD COLUMN NOT NULL DEFAULT <expr>` also rewrites the table. |
-| `SA002` | error | static | `ADD COLUMN ... DEFAULT <volatile>` (any PG version) | Volatile defaults (e.g., `now()`, `random()`, `gen_random_uuid()`) cause a full table rewrite on ALL PostgreSQL versions, including PG 11+. The PG 11 optimization only applies to immutable/stable defaults. |
+| `SA002` | error | static | `ADD COLUMN ... DEFAULT <volatile>` (any PG version) | Volatile defaults (e.g., `random()`, `gen_random_uuid()`, `clock_timestamp()`, `txid_current()`) cause a full table rewrite on ALL PostgreSQL versions, including PG 11+. The PG 11 optimization only applies to immutable/stable defaults. Note: `now()` is `STABLE` (returns transaction start time), not volatile — `DEFAULT now()` does NOT cause a rewrite on PG 11+. |
 | `SA002b` | warn | static | `ADD COLUMN ... DEFAULT <non-volatile>` on PG < 11 | Non-volatile defaults cause a full table rewrite on PG < 11. Safe on PG 11+ (metadata-only). |
 | `SA003` | error | static | `ALTER COLUMN ... TYPE` (unsafe cast) | Full table rewrite + `AccessExclusiveLock`. See safe cast allowlist below. |
 | `SA004` | warn | static | `CREATE INDEX` without `CONCURRENTLY` | Takes `ShareLock`, blocks INSERT/UPDATE/DELETE for duration. |
@@ -317,27 +355,33 @@ Analyze migration SQL before deploy and flag dangerous patterns. Moved from v1.1
 | `SA006` | warn | static | `DROP COLUMN` | Data loss, irreversible. |
 | `SA007` | error | static | `DROP TABLE` (non-revert context) | Data loss. In sqitch project context, files under `revert/` are exempt. In standalone mode, always fires. |
 | `SA008` | warn | static | `TRUNCATE` | Data loss. |
-| `SA009` | warn | connected | `ADD FOREIGN KEY` without `NOT VALID` | Takes `ShareRowExclusiveLock` on both tables for duration of validation scan. Recommend two-step: `ADD CONSTRAINT ... NOT VALID` then `VALIDATE CONSTRAINT` (takes only `ShareUpdateExclusiveLock`, does not block writes). Also flags missing index on referencing column (ongoing performance concern). |
+| `SA009` | warn | hybrid | `ADD FOREIGN KEY` without `NOT VALID` | Static: detects `ADD FOREIGN KEY` without `NOT VALID` (lock concern — takes `ShareRowExclusiveLock` on both tables for duration of validation scan). Connected: also flags missing index on referencing column (ongoing performance concern). Recommend two-step: `ADD CONSTRAINT ... NOT VALID` then `VALIDATE CONSTRAINT` (takes only `ShareUpdateExclusiveLock`, does not block writes). |
 | `SA010` | warn | static | `UPDATE` or `DELETE` without `WHERE` | Full table DML. Downgraded from `error` to `warn` — full-table DML is often intentional in migrations (backfills, cleanups). Use inline suppression for acknowledged cases. |
 | `SA011` | warn | connected | `UPDATE` or `DELETE` on large table (estimated rows > threshold) | Long-running DML, table bloat. Requires `pg_class.reltuples` from live database. |
 | `SA012` | info | static | `ALTER SEQUENCE RESTART` | May break application assumptions. |
 | `SA013` | warn | static | `SET lock_timeout` missing before risky DDL | Runaway lock wait. "Risky DDL" = any DDL taking `AccessExclusiveLock` or `ShareLock`. If lock timeout guard (5.9) auto-prepends, SA013 does not fire. |
 | `SA014` | warn | static | `VACUUM FULL` or `CLUSTER` | Full table lock + rewrite, avoid in migrations. |
 | `SA015` | warn | static | `ALTER TABLE ... RENAME` (table or column) | Breaks running application. Severity is `warn` (not `error`) until expand/contract (v2.0) exists, since there is no way to satisfy the rule before then. After v2.0, promote to `error` for renames not part of an expand/contract pair. |
-| `SA016` | error | static | `ADD CONSTRAINT ... CHECK` without `NOT VALID` | Full table scan under `AccessExclusiveLock`. Safe pattern: `ADD CONSTRAINT ... NOT VALID` then `VALIDATE CONSTRAINT`. |
-| `SA017` | error | static | `ALTER COLUMN ... SET NOT NULL` (existing column) | Full table scan under `AccessExclusiveLock`. On PG 12+, skippable if a valid `CHECK (col IS NOT NULL)` constraint exists. Recommend three-step: add CHECK NOT VALID, validate, then SET NOT NULL. |
-| `SA018` | warn | static | `ADD PRIMARY KEY` without pre-existing index | Creates a unique index non-concurrently, taking `AccessExclusiveLock`. Safe pattern: create index concurrently first, then `ADD CONSTRAINT ... USING INDEX`. |
+| `SA016` | error | static | `ADD CONSTRAINT ... CHECK` without `NOT VALID` | Full table scan under `ShareLock` (PG < 16) / `ShareUpdateExclusiveLock` (PG 16+) — blocks concurrent DDL, and scan duration keeps the lock held. Safe pattern: `ADD CONSTRAINT ... NOT VALID` then `VALIDATE CONSTRAINT`. |
+| `SA017` | error | hybrid | `ALTER COLUMN ... SET NOT NULL` (existing column) | Static: fires on any `SET NOT NULL` (on PG < 12, full table scan under `AccessExclusiveLock`; on PG 12+, metadata-only if a valid CHECK constraint exists). Connected: checks catalog for existing valid `CHECK (col IS NOT NULL)` constraint and suppresses if found. Recommend three-step: add CHECK NOT VALID, validate, then SET NOT NULL. |
+| `SA018` | warn | hybrid | `ADD PRIMARY KEY` without pre-existing index | Static: fires on `ADD PRIMARY KEY` without `USING INDEX` clause (`ALTER TABLE` takes `AccessExclusiveLock`, and the implicit index creation extends lock duration). Connected: checks catalog for pre-existing unique index on the PK columns and suppresses if found. Safe pattern: create index concurrently first, then `ADD CONSTRAINT ... USING INDEX`. |
 | `SA019` | warn | static | `REINDEX` without `CONCURRENTLY` | Takes `AccessExclusiveLock`. PG 12+ supports `REINDEX CONCURRENTLY`. |
-| `SA020` | error | static | `CREATE INDEX CONCURRENTLY` inside transactional deploy | Cannot run inside a transaction block — will fail at runtime. Change must be marked `--no-transaction`. |
+| `SA020` | error | static | `CREATE INDEX CONCURRENTLY`, `DROP INDEX CONCURRENTLY`, or `REINDEX CONCURRENTLY` inside transactional deploy | Cannot run inside a transaction block — will fail at runtime. Change must be marked non-transactional. In project mode: checks plan file for non-transactional marker. In standalone mode: warns on any `CONCURRENTLY` usage with message "Ensure this runs outside a transaction block." Also recognizes `-- sqitch-no-transaction` script comment (see non-transactional changes below). |
 | `SA021` | warn | static | `LOCK TABLE` (any mode) | Explicit locking in migrations is a code smell and dangerous in production. |
 
 **SA003 safe cast allowlist:** The following type changes are known to be safe (no table rewrite, binary-compatible):
 - `varchar(N)` to `varchar(M)` where M > N (widening)
 - `varchar(N)` to `varchar` (removing limit)
 - `varchar` to `text`
+- `char(N)` to `varchar` or `text`
 - `numeric(P,S)` to `numeric(P2,S)` where P2 > P (widening precision)
+- `numeric(P,S)` to unconstrained `numeric` (removing precision/scale constraint)
 
-All other type changes are flagged. When a `USING` clause is present, the cast always requires a rewrite regardless of types. In the absence of a database connection, the rule is conservative and flags all type changes not in the allowlist. With a connection, the rule can consult `pg_cast` to determine if the cast is binary-coercible.
+Known unsafe casts that require a rewrite (commonly assumed safe but are not):
+- `int` to `bigint` — different binary representation, always rewrites
+- `timestamp` to `timestamptz` — rewrite required
+
+All other type changes are flagged. When a `USING` clause is present, PostgreSQL rewrites the table to evaluate the expression, even when the source and target types are binary-compatible. In the absence of a database connection, the rule is conservative and flags all type changes not in the allowlist. With a connection, the rule can consult `pg_cast` to determine if the cast is binary-coercible.
 
 **OPEN:** Build a comprehensive safe-cast list by auditing `pg_cast.castmethod` across PG 14-18. The allowlist above is a starting point.
 
@@ -350,6 +394,13 @@ UPDATE users SET tier = 'free';
 -- stitch:enable SA010
 ```
 Or single-line: `UPDATE users SET tier = 'free'; -- stitch:disable SA010`
+
+**Inline suppression scoping rules:**
+- **Block form:** `-- stitch:disable` ... `-- stitch:enable` suppresses findings for all statements between the markers. An unclosed block (no matching `enable`) extends to end of file and produces a warning.
+- **Single-line form:** A trailing `-- stitch:disable` comment attaches to the immediately preceding statement (determined by source range from the parser).
+- **Multiple rules:** Comma-separated rule IDs are supported: `-- stitch:disable SA010,SA011`.
+- **Unknown rules:** `-- stitch:disable SA999` (nonexistent rule) produces a warning, not a silent ignore.
+- **`all` keyword:** `-- stitch:disable all` is NOT supported — suppressing all rules silently is too dangerous. Suppress rules individually.
 
 **Per-file overrides in `stitch.toml`:**
 ```toml
@@ -373,7 +424,7 @@ pg_version = 14               # minimum PG version migrations must support
 interface Rule {
   id: string;           // "SA001"
   severity: Severity;
-  type: "static" | "connected";
+  type: "static" | "connected" | "hybrid";
   check(context: AnalysisContext): Finding[];
 }
 interface AnalysisContext {
@@ -458,11 +509,11 @@ Inspired by pgroll — but surgical (no full table recreation).
 
 **Trigger edge cases and mitigations:**
 
-1. **Infinite recursion:** Bidirectional sync triggers (old→new, new→old) can recurse infinitely. All generated sync triggers must include a `pg_trigger_depth()` guard: `IF pg_trigger_depth() < 2 THEN ... END IF`.
+1. **Infinite recursion:** Bidirectional sync triggers (old→new, new→old) can recurse infinitely. All generated sync triggers must include a recursion guard using a session variable: `SET LOCAL stitch.syncing = 'true'` before the sync operation, and `IF current_setting('stitch.syncing', true) IS DISTINCT FROM 'true' THEN ... END IF` as the guard. This is preferred over `pg_trigger_depth()` because `pg_trigger_depth()` is fragile in environments with existing triggers on the table (application triggers may already increase the depth, causing the guard to suppress legitimate sync trigger fires).
 
 2. **Logical replication:** Triggers do not fire on logical replication subscribers by default. If the target database is a subscriber, sync triggers will not fire, leaving columns out of sync. stitch should document this limitation. Using `ALTER TABLE ... ENABLE ALWAYS TRIGGER` is possible but risky (may cause loops). **OPEN:** Determine the recommended approach for logical replication environments.
 
-3. **Partitioned tables:** Before PG 13, triggers could not be defined on the partitioned parent table — they had to be installed on each partition individually. PG 13+ supports trigger inheritance from the parent. stitch must detect partitioned tables and handle trigger installation accordingly. Backfills must be partition-aware.
+3. **Partitioned tables:** Since stitch targets PG 14+ (test matrix), trigger inheritance from the partitioned parent table is always available (PG 13+ feature). stitch installs sync triggers on the parent table; they automatically apply to all partitions. Backfills must be partition-aware (iterate per-partition for progress tracking and to avoid lock escalation).
 
 4. **COPY performance:** `BEFORE INSERT` triggers fire during `COPY`, which may significantly impact bulk load performance during the expand phase. Document this trade-off.
 
@@ -507,7 +558,7 @@ stitch batch retry backfill_user_tier    # manual retry of dead job
 - Progress: rows done / rows remaining / ETA
 - Per-batch transaction — each batch commits independently
 - Replication lag monitoring: query `pg_stat_replication.replay_lag` and pause the batch job when lag exceeds a configurable threshold (default: 10s). Most production databases have replicas; unthrottled batched writes will cause replica lag incidents.
-- VACUUM pressure awareness: monitor `pg_stat_user_tables.n_dead_tup` and pause if dead tuple accumulation exceeds a threshold. Many small transactions create dead tuples; autovacuum may not keep up on hot tables.
+- VACUUM pressure awareness: monitor `pg_stat_user_tables.n_dead_tup` and pause if dead tuple ratio exceeds a configurable percentage (default: 10%). The ratio is computed as `n_dead_tup / (n_live_tup + n_dead_tup)`. Using a ratio rather than an absolute count ensures the threshold is meaningful regardless of table size. Configurable via `stitch.toml` `[batch] max_dead_tuple_ratio`. Many small transactions create dead tuples; autovacuum may not keep up on hot tables.
 - Connection management: the batch worker requires a direct PostgreSQL connection (not through PgBouncer in transaction mode) because it uses session-level settings and the connection must persist across sleep intervals. SET statements (`lock_timeout`, `statement_timeout`, `search_path`) are re-issued at the start of each batch transaction as a safety measure.
 - Inspired by GitLab `BatchedMigration`: throttling, pause/resume, retry, state tracking in Postgres
   - https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/database/migration_helpers.rb
@@ -524,8 +575,25 @@ stitch analyze --format json | jq .         # structured for any CI
 stitch analyze --format gitlab-codequality  # native GL code quality report
 
 # General
-stitch analyze --exit-code                  # non-zero if any errors found
+stitch analyze --strict                     # exit non-zero on any finding (warnings treated as errors)
 ```
+
+Note: `stitch analyze` returns exit code 2 when error-level findings exist (default behavior). The `--strict` flag additionally treats warnings as errors for exit code purposes. This replaces the earlier `--exit-code` flag which was redundant with the default behavior.
+
+**Reporter format specifications:**
+
+- **`text`** (default): Human-readable output with colors when stdout is a TTY.
+- **`json`**: Structured output following a defined schema:
+  ```json
+  {
+    "version": 1,
+    "metadata": { "files_analyzed": 3, "rules_checked": 21, "duration_ms": 42 },
+    "findings": [ { "ruleId": "SA004", "severity": "warn", "message": "...", "location": { "file": "...", "line": 5, "column": 1 }, "suggestion": "..." } ],
+    "summary": { "errors": 0, "warnings": 1, "info": 0 }
+  }
+  ```
+- **`github-annotations`**: GitHub Actions workflow commands: `::error file={file},line={line},col={col}::{message}` and `::warning ...`. Appear inline in PR diffs.
+- **`gitlab-codequality`**: GitLab Code Quality JSON schema: `[{"description": "...", "check_name": "SA004", "fingerprint": "...", "severity": "major", "location": {"path": "...", "lines": {"begin": 5}}}]`.
 
 **Example GitHub Actions step:**
 ```yaml
@@ -565,7 +633,9 @@ Automatically prepend `SET lock_timeout = '5s'` before any DDL that could take a
 
 Detection: stitch scans the deploy script for any `SET lock_timeout` statement at the top level. If found, the auto-prepend is skipped for that script.
 
-**Timeout behavior on failure:** When `lock_timeout` fires, the statement fails and the transaction rolls back. stitch reports the error with actionable guidance: which lock was contended, suggestion to retry, and optionally identify the blocking query via `pg_stat_activity`. No automatic retry — the operator decides.
+**Timeout behavior on failure:** When `lock_timeout` fires, the statement fails and the transaction rolls back. stitch reports the error with actionable guidance: which lock was contended, suggestion to retry, and optionally identify the blocking query via `pg_stat_activity`.
+
+**Lock retry for CI:** `stitch deploy --lock-retries N` (default: 0, no retry) retries acquiring the lock up to N times with exponential backoff (starting at 1 second, doubling each retry, capped at 30 seconds). This is designed for CI pipelines where the operator is not present to manually re-trigger a deploy after a transient lock conflict. Configurable via `stitch.toml` `[deploy] lock_retries`.
 
 **Per-migration override:** Individual migrations can set their own `lock_timeout` (e.g., a `VALIDATE CONSTRAINT` that needs a longer timeout). The auto-prepend is suppressed when the script contains its own `SET lock_timeout`.
 
@@ -682,28 +752,30 @@ Resolve before Sprint 2 (plan + tracking). This decision affects the data flow, 
 
 If using psql, Sqitch does NOT wrap deploy scripts in a transaction managed by Sqitch — it passes transaction control to psql and manages tracking separately. If using node-postgres, stitch manages `BEGIN`/`COMMIT` directly. The transaction boundary differs by mode.
 
-### DD13 — PgBouncer compatibility
+### DD13 — PgBouncer compatibility and advisory locks
 
 **The problem:** Most production PostgreSQL deployments use PgBouncer for connection pooling. PgBouncer in transaction mode has significant implications for stitch:
 
-- `pg_advisory_lock` (session-level) does not work — the lock is tied to the backend connection, which PgBouncer may reassign between transactions. Only `pg_advisory_xact_lock` (transaction-level) is safe.
+- `pg_advisory_lock` (session-level) does not work through PgBouncer in transaction mode — the lock is tied to the backend connection, which PgBouncer may reassign between transactions.
+- `pg_advisory_xact_lock` (transaction-level) releases at transaction end — it cannot span the entire deploy in `--mode change` (each change is a separate transaction) or across non-transactional changes. This makes it unsuitable for deploy coordination.
 - Session-level `SET` commands (`lock_timeout`, `statement_timeout`, `search_path`) may leak to other connections or be lost between transactions.
 - The batch worker's sleep interval between batches causes the connection to return to the pool; the next batch may run on a different backend.
 
-**Decision:** stitch deploy and batch operations should connect directly to PostgreSQL, not through PgBouncer. stitch will:
+**Decision:** stitch deploy, revert, rebase, checkout, and batch operations require direct PostgreSQL connections, not PgBouncer in transaction mode. stitch will:
 
-1. **Detect PgBouncer:** Query `SHOW VERSION` or check if `pg_backend_pid()` changes between transactions. If PgBouncer is detected, emit a warning recommending a direct connection.
-2. **Use `pg_advisory_xact_lock` when possible:** For deploy coordination, prefer transaction-level advisory locks over session-level locks. Session-level locks (`pg_advisory_lock`) are used only when the connection is known to be direct.
-3. **Re-issue SET commands:** At the start of each transaction, re-issue any session-level settings (`lock_timeout`, `statement_timeout`, `search_path`) as a safety measure against connection reassignment.
-4. **Document:** Recommend direct PostgreSQL connections for deploy/batch operations. Application traffic can continue to use PgBouncer.
+1. **Use session-level advisory locks:** `pg_advisory_lock(hashtext('stitch_deploy_' || project_name))` for deploy coordination. Session-level locks are the only option that works across multi-transaction deploys (`--mode change`) and non-transactional changes. The lock is held for the entire deploy session and released explicitly on completion (or automatically on disconnect for crash recovery). The same lock must be acquired for `revert`, `rebase`, and `checkout` — any command that modifies tracking state or executes DDL/DML.
+2. **Detect PgBouncer:** Attempt `SHOW pool_mode` (PgBouncer-specific command that returns the pool mode; errors on direct PG connections). If PgBouncer in transaction mode is detected, emit an **error** (not just a warning) for deploy/revert/rebase/checkout operations, as session-level advisory locks are not safe. Allow override via `stitch.toml` `connection_type = "direct"` for non-PgBouncer poolers or PgBouncer in session mode.
+3. **Re-issue SET commands:** At the start of each transaction, re-issue any session-level settings (`lock_timeout`, `statement_timeout`, `search_path`) as a safety measure.
+4. **Document:** Require direct PostgreSQL connections for deploy/batch operations. Application traffic can continue to use PgBouncer.
 
 ### DD14 — Deploy connection session settings
 
 Deploy connections should set:
-- `statement_timeout = 0` (or a configurable high value) — migrations are inherently long-running; a global `statement_timeout` (common in production, e.g., 30s) will kill legitimate operations like `CREATE INDEX CONCURRENTLY` or `VALIDATE CONSTRAINT`.
-- `idle_in_transaction_session_timeout = 0` — prevents the connection from being killed during gaps between statements (TUI rendering, analysis, user confirmation).
+- `application_name = 'stitch/<command>/<project>'` — e.g., `stitch/deploy/myproject`. Visible in `pg_stat_activity`, critical for DBAs diagnosing lock contention or long-running queries during incidents.
+- `statement_timeout = 0` (or a configurable high value) — migrations are inherently long-running; a global `statement_timeout` (common in production, e.g., 30s) will kill legitimate operations like `VALIDATE CONSTRAINT`. For non-transactional DDL (e.g., `CREATE INDEX CONCURRENTLY`), a separate configurable timeout applies (default: 4 hours, configurable via `stitch.toml` `[deploy] non_transactional_statement_timeout`). This prevents indefinite hangs while allowing legitimately long operations.
+- `idle_in_transaction_session_timeout` — set to a configurable generous value (default: 10 minutes), not unlimited. This provides a safety net against hung deploy processes (e.g., operator walks away during a TUI prompt) without interfering with normal operation. Configurable via `stitch.toml` `[deploy] idle_in_transaction_session_timeout`.
 - `lock_timeout` — set by the lock timeout guard (5.9), per-migration configurable.
-- `search_path` — **OPEN:** Should stitch set an explicit `search_path`? Options: (a) respect the database default, (b) set to the target schema, (c) allow configuration in `stitch.toml`. Document the chosen behavior.
+- `search_path` — respect the database/role default (Sqitch-compatible behavior). Sqitch does not set `search_path`; stitch follows suit. Override available via `stitch.toml` `[deploy] search_path` for teams that want explicit control.
 
 ---
 
@@ -770,7 +842,9 @@ stitch/
 │   ├── unit/
 │   ├── integration/
 │   └── fixtures/
-├── SPEC.md
+├── spec/
+│   ├── SPEC.md
+│   └── SPEC-CHANGELOG.md
 ├── README.md
 ├── package.json
 ├── tsconfig.json
@@ -786,9 +860,14 @@ stitch/
 [engine "pg"]
     target = db:pg:mydb
     client = /usr/bin/psql
+[deploy]
+    verify = true
+    mode = change
 [target "production"]
     uri = db:pg://user@host/dbname
 ```
+
+The `[deploy]` section controls default deploy behavior: `verify` (default: `true`, run verify scripts after each change), `mode` (default: `change`, transaction scope). These correspond to `--verify`/`--no-verify` and `--mode` command-line flags.
 
 **Configuration precedence:** system (`$(prefix)/etc/sqitch/sqitch.conf`) < user (`~/.sqitch/sqitch.conf`) < project (`./sqitch.conf`) < `stitch.toml` (stitch-only features) < environment variables < command-line flags.
 
@@ -801,9 +880,10 @@ stitch/
 ```
 stitch deploy
   → parse sqitch.conf + stitch.toml
-  → connect to database (set statement_timeout=0, idle_in_transaction_session_timeout=0)
-  → acquire advisory lock (pg_advisory_xact_lock or pg_advisory_lock)
+  → connect to database (set application_name, statement_timeout=0, idle_in_transaction_session_timeout=10min)
+  → acquire session-level advisory lock: pg_advisory_lock(hashtext('stitch_deploy_' || project_name))
     → if lock not acquired: exit 4 (concurrent deploy detected)
+    → (requires direct connection — not PgBouncer in transaction mode)
   → read sqitch.* tracking tables
   → compute pending changes (topological sort by dependency)
   → check conflict dependencies (no conflicts may be currently deployed)
@@ -823,18 +903,24 @@ stitch deploy
           → execute deploy script
           → update sqitch.changes, sqitch.events, sqitch.dependencies
           → COMMIT
-  → release advisory lock
+  → release advisory lock: pg_advisory_unlock(hashtext('stitch_deploy_' || project_name))
   → print summary
 ```
 
-**Non-transactional changes:** Marked via `stitch add --no-transaction` (adds a pragma to the plan file entry). During deploy, these changes execute without `BEGIN`/`COMMIT` wrapping. The tracking table update happens in a separate transaction after the DDL succeeds. Failure recovery for non-transactional DDL is fundamentally different: a failed `CREATE INDEX CONCURRENTLY` leaves an `INVALID` index that must be cleaned up manually before retrying.
+**Non-transactional changes:** Sqitch marks non-transactional changes via a `-- sqitch-no-transaction` comment on the first line of the deploy script. stitch supports this convention for compatibility and additionally supports a plan file pragma added by `stitch add --no-transaction`. During deploy, these changes execute without `BEGIN`/`COMMIT` wrapping. A separate configurable `statement_timeout` applies to non-transactional DDL (default: 4 hours, configurable via `stitch.toml` `[deploy] non_transactional_statement_timeout`).
+
+**Non-transactional write-ahead tracking:** Before executing non-transactional DDL, stitch writes a "pending" record to `stitch.pending_changes` (in its own committed transaction). After the DDL succeeds, the record is updated to "complete" and the sqitch tracking tables are updated. On the next deploy, stitch checks for any "pending" non-transactional changes and verifies their state (e.g., does the index exist? is it VALID?) before deciding to skip or retry. This handles the case where stitch crashes between DDL execution and tracking table update.
+
+Failure recovery for non-transactional DDL is fundamentally different: a failed `CREATE INDEX CONCURRENTLY` leaves an `INVALID` index that must be cleaned up. The error message must include the exact command to drop the INVALID index before retrying.
+
+**`ALTER TYPE ... ADD VALUE` note:** On PG < 12, `ALTER TYPE ... ADD VALUE` cannot run inside a transaction block and must be marked non-transactional. On PG 12+, it can run inside a transaction, but the new enum value is **not usable within the same transaction** — an `INSERT` using the new value in the same transaction will fail. If a deploy script does `ALTER TYPE ... ADD VALUE 'x'` followed by `INSERT ... VALUES ('x')`, they must be in separate changes or the change must be non-transactional.
 
 **Transaction scope by `--mode`:**
 - `change` (default): each change in its own transaction (as shown above).
 - `all`: all changes in a single transaction. Failure rolls back everything including tracking table updates.
 - `tag`: changes grouped by tag, each tag-group in a single transaction.
 
-Non-transactional changes always execute outside any transaction regardless of `--mode`.
+Non-transactional changes always execute outside any transaction regardless of `--mode`. In `--mode all`, non-transactional changes break the surrounding transaction: stitch issues `COMMIT` before the non-transactional DDL, executes it, then issues `BEGIN` to continue with subsequent changes. This means `--mode all` cannot guarantee atomicity when non-transactional changes are present. If a change after a non-transactional change fails, the non-transactional DDL cannot be rolled back. stitch emits a warning at the start of deploy when `--mode all` is used with a plan containing non-transactional changes.
 
 ---
 
@@ -951,9 +1037,11 @@ PG < 14 is best-effort/untested. Version-aware rules (SA002b) still fire based o
 - Lock timeout exceeded: exit code 5, actionable error message
 
 **Advisory lock tests:**
-- `pg_advisory_lock` acquired at deploy start, released on completion
+- `pg_advisory_lock(hashtext('stitch_deploy_' || project))` acquired at deploy start, released on completion
+- Same lock acquired for revert, rebase, and checkout operations
 - Second concurrent deploy blocked, reports exit code 4
 - Crashed deploy: advisory lock auto-released on disconnect, next deploy succeeds
+- PgBouncer detection: `SHOW pool_mode` triggers error for deploy/revert in transaction mode
 
 **Dependency scenarios:**
 - Diamond dependency deploys correctly
@@ -1040,9 +1128,11 @@ tests/fixtures/analysis/
       add_column_not_null_with_default.pg11.trigger.sql  # triggers on PG < 11
   SA002/
     trigger/
-      add_column_default_now.sql                # must trigger (volatile, all versions)
       add_column_default_random.sql             # must trigger (volatile, all versions)
+      add_column_default_gen_random_uuid.sql    # must trigger (volatile, all versions)
+      add_column_default_clock_timestamp.sql    # must trigger (volatile, all versions)
     no_trigger/
+      add_column_default_now.sql                # must NOT trigger on PG >= 11 (now() is STABLE)
       add_column_default_literal.pg17.sql       # must NOT trigger on PG >= 11
     ...
   SA009/
@@ -1225,7 +1315,7 @@ After this phase: drop-in replacement for all Sqitch commands.
 
 **Sprint 3 — deploy + revert**
 - [ ] `src/commands/deploy.ts`: topological sort, execute deploy scripts, update tracking
-- [ ] Advisory lock acquisition at deploy start (`pg_advisory_xact_lock` or `pg_advisory_lock`)
+- [ ] Advisory lock acquisition at deploy start: `pg_advisory_lock(hashtext('stitch_deploy_' || project_name))` — session-level, released on completion or disconnect
 - [ ] Non-transactional change support (execute without BEGIN/COMMIT, track separately)
 - [ ] `src/commands/revert.ts`: execute revert scripts in reverse order, update tracking
 - [ ] `--to <change>` flag for both
@@ -1233,7 +1323,7 @@ After this phase: drop-in replacement for all Sqitch commands.
 - [ ] `--mode [all|change|tag]` flag with correct transaction boundaries
 - [ ] `--log-only` flag (record as deployed without executing)
 - [ ] `--set` variable substitution
-- [ ] Deploy connection session settings (statement_timeout=0, idle_in_transaction_session_timeout=0)
+- [ ] Deploy connection session settings (application_name, statement_timeout=0, idle_in_transaction_session_timeout=10min, non_transactional_statement_timeout=4h)
 - [ ] Lock timeout guard: auto-prepend `SET lock_timeout` before risky DDL (configurable, enabled by default)
 - [ ] Conflict dependency checking
 - [ ] Partial deploy / revert with dependency validation
@@ -1305,8 +1395,8 @@ After this phase: drop-in replacement for all Sqitch commands.
 - [ ] `src/expand-contract/tracker.ts`: track phase state in Postgres (new table in `stitch.*` schema)
 - [ ] `stitch add --expand`: generate linked pair
 - [ ] `stitch deploy --phase expand|contract`
-- [ ] Trigger generation for old↔new column sync (with `pg_trigger_depth()` guard)
-- [ ] Partitioned table detection: per-partition triggers on PG < 13, parent trigger on PG 13+
+- [ ] Trigger generation for old↔new column sync (with session variable recursion guard: `stitch.syncing`)
+- [ ] Partitioned table detection: install sync triggers on parent table (PG 14+ always supports trigger inheritance)
 - [ ] View shim for backward compat during transition
 - [ ] Backfill verification before contract phase
 - [ ] Advisory lock-based concurrency control for phase transitions
