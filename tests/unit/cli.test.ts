@@ -308,8 +308,8 @@ describe("unknown commands", () => {
 // ---------------------------------------------------------------------------
 
 describe("command stubs", () => {
-  // "help" is handled specially (not a stub), "init" is implemented — exclude both
-  const STUB_COMMANDS = ALL_COMMANDS.filter((c) => c !== "help" && c !== "init");
+  // "help" is handled specially (not a stub), "init" and "add" are implemented — exclude all three
+  const STUB_COMMANDS = ALL_COMMANDS.filter((c) => c !== "help" && c !== "init" && c !== "add");
 
   for (const cmd of STUB_COMMANDS) {
     test(`'${cmd}' prints not-yet-implemented and exits 1`, async () => {
