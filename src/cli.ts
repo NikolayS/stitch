@@ -12,6 +12,7 @@ import { parseTagArgs, runTag } from "./commands/tag";
 import { parseReworkArgs, runRework } from "./commands/rework";
 import { parseShowArgs, runShow } from "./commands/show";
 import { runPlan } from "./commands/plan";
+import { runVerify } from "./commands/verify";
 
 // ---------------------------------------------------------------------------
 // Command registry — all commands from SPEC R1 plus sqlever extensions
@@ -360,6 +361,15 @@ export function main(argv: string[] = process.argv.slice(2)): void {
       process.stderr.write(`sqlever show: ${msg}\n`);
       process.exit(1);
     }
+    return;
+  }
+
+  if (args.command === "verify") {
+    runVerify(args).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`sqlever verify: ${msg}\n`);
+      process.exit(1);
+    });
     return;
   }
 
