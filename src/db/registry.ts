@@ -474,6 +474,62 @@ export class Registry {
   }
 
   // -----------------------------------------------------------------------
+  // Events
+  // -----------------------------------------------------------------------
+
+  /**
+   * Query events from sqitch.events with optional filters.
+   *
+   * @param project  - Project name to filter by
+   * @param options  - Optional filters: event type, limit, offset, ordering
+   * @returns Matching event rows
+   */
+  async getEvents(
+    project: string,
+    options: {
+      event?: "deploy" | "revert" | "fail" | "merge";
+      limit?: number;
+      offset?: number;
+      reverse?: boolean;
+    } = {},
+  ): Promise<Event[]> {
+    const conditions: string[] = ["project = $1"];
+    const params: unknown[] = [project];
+    let paramIdx = 2;
+
+    if (options.event) {
+      conditions.push(`event = $${paramIdx}`);
+      params.push(options.event);
+      paramIdx++;
+    }
+
+    const direction = options.reverse ? "ASC" : "DESC";
+
+    let sql = `SELECT event, change_id, change, project, note,
+              requires, conflicts, tags,
+              committed_at, committer_name, committer_email,
+              planned_at, planner_name, planner_email
+       FROM sqitch.events
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY committed_at ${direction}`;
+
+    if (options.limit !== undefined) {
+      sql += ` LIMIT $${paramIdx}`;
+      params.push(options.limit);
+      paramIdx++;
+    }
+
+    if (options.offset !== undefined) {
+      sql += ` OFFSET $${paramIdx}`;
+      params.push(options.offset);
+      paramIdx++;
+    }
+
+    const result = await this.db.query<Event>(sql, params);
+    return result.rows;
+  }
+
+  // -----------------------------------------------------------------------
   // Pending changes
   // -----------------------------------------------------------------------
 
