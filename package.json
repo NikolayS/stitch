@@ -1,13 +1,13 @@
 {
-  "name": "sqevo",
+  "name": "sqlever",
   "version": "0.1.0",
   "description": "Sqitch-compatible PostgreSQL migration tool",
   "type": "module",
   "bin": {
-    "sqevo": "./src/cli.ts"
+    "sqlever": "./src/cli.ts"
   },
   "scripts": {
-    "build": "bun build src/cli.ts --compile --outfile dist/sqevo",
+    "build": "bun build src/cli.ts --compile --outfile dist/sqlever",
     "test": "bun test"
   },
   "devDependencies": {

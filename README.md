@@ -1,4 +1,4 @@
-# sqevo
+# sqlever
 
 A drop-in replacement for [Sqitch](https://sqitch.org/) — PostgreSQL-only, TypeScript/Bun, with static analysis and zero-downtime migration primitives.
 

@@ -1,8 +1,12 @@
 # Changelog
 
-All notable changes to the sqevo spec and codebase will be documented here.
+All notable changes to the sqlever spec and codebase will be documented here.
 
 ## [Unreleased]
+
+## [SPEC 0.9] — 2026-03-20
+
+- Renamed project from sqevo to sqlever.
 
 ## [SPEC 0.8] — 2026-03-20
 
@@ -20,7 +24,7 @@ Customer zero validation: PostgresAI Console (`postgres-ai/platform-ui/db`).
 
 ## [SPEC 0.7] — 2026-03-20
 
-- **DD12 RESOLVED: Shell out to psql.** 100% psql metacommand compatibility — no subset, no reimplementation. `\i`, `\ir`, `\set`, `\copy`, `\if` all work exactly as in Sqitch. `node-postgres` used only for sqevo's own DB operations (tracking tables, advisory locks, introspection, batch DML). This was the last major OPEN blocking implementation.
+- **DD12 RESOLVED: Shell out to psql.** 100% psql metacommand compatibility — no subset, no reimplementation. `\i`, `\ir`, `\set`, `\copy`, `\if` all work exactly as in Sqitch. `node-postgres` used only for sqlever's own DB operations (tracking tables, advisory locks, introspection, batch DML). This was the last major OPEN blocking implementation.
 
 ## [SPEC 0.6.2] — 2026-03-20
 
@@ -52,13 +56,13 @@ Round 4 expert review findings addressed (convergence check). Same four reviewer
 
 - **Advisory lock unlock on all exit paths:** Added explicit note that `pg_advisory_unlock` must be called on ALL exit paths (success, failure, analysis abort), not just the happy path. Disconnect-based release is the safety net for crashes, not the primary unlock mechanism.
 
-- **`sqevo.pending_changes` protected by deploy advisory lock:** Added explicit note linking the session-level advisory lock to `sqevo.pending_changes` — the lock prevents concurrent access to pending records.
+- **`sqlever.pending_changes` protected by deploy advisory lock:** Added explicit note linking the session-level advisory lock to `sqlever.pending_changes` — the lock prevents concurrent access to pending records.
 
 ### Minor fixes
 
 - SA003: clarified that `USING` clause presence always triggers SA003 regardless of the safe cast allowlist
 - SA001: confirmed it does NOT fire when a `DEFAULT` is present (that case is SA002/SA002b territory)
-- `sqevo.*` schema creation: clarified that the `sqevo` schema is created on first non-transactional deploy (not just expand/contract and batched DML)
+- `sqlever.*` schema creation: clarified that the `sqlever` schema is created on first non-transactional deploy (not just expand/contract and batched DML)
 - Version bumped to 0.6
 
 ## [SPEC 0.5] — 2026-03-20
@@ -79,19 +83,19 @@ Round 3 expert review findings addressed. Same four reviewers: PG internals expe
 
 - **`pg_advisory_lock` replaced with `pg_try_advisory_lock`:** Default mode is now non-blocking — `pg_try_advisory_lock()` returns false immediately if lock held, matching "exit 4" behavior. Added configurable `advisory_lock_timeout` (default 30s) for CI wait mode using `pg_advisory_lock` with `SET lock_timeout`. Default: try, fail fast.
 
-- **`hashtext()` instability resolved:** Replaced `hashtext('sqevo_deploy_' || project_name)` with application-level hash. Lock key uses two-argument form `pg_advisory_lock(constant_namespace, project_hash)` with a stable application-computed hash. `hashtext()` output is not guaranteed stable across PG major versions.
+- **`hashtext()` instability resolved:** Replaced `hashtext('sqlever_deploy_' || project_name)` with application-level hash. Lock key uses two-argument form `pg_advisory_lock(constant_namespace, project_hash)` with a stable application-computed hash. `hashtext()` output is not guaranteed stable across PG major versions.
 
-- **SET LOCAL trigger guard replaced:** `SET LOCAL sqevo.syncing = 'true'` remains true for the entire transaction, suppressing ALL subsequent trigger fires. Replaced with `pg_trigger_depth()` scoped to sqevo triggers via `TG_NAME LIKE 'sqevo_sync_%'`. All sqevo-generated sync triggers must use the `sqevo_sync_` name prefix.
+- **SET LOCAL trigger guard replaced:** `SET LOCAL sqlever.syncing = 'true'` remains true for the entire transaction, suppressing ALL subsequent trigger fires. Replaced with `pg_trigger_depth()` scoped to sqlever triggers via `TG_NAME LIKE 'sqlever_sync_%'`. All sqlever-generated sync triggers must use the `sqlever_sync_` name prefix.
 
 - **SA016 lock level corrected:** Reverted PG < 16 lock from `ShareLock` to `AccessExclusiveLock`. `ADD CONSTRAINT ... CHECK` (with immediate validation) takes `AccessExclusiveLock` on PG < 16, `ShareUpdateExclusiveLock` on PG 16+.
 
-- **`--mode all` is NOT a single transaction in Sqitch:** Sqitch's `_deploy_all` uses per-change transactions with explicit revert on failure, NOT a single wrapping transaction. Documented accurately. sqevo's true single-transaction `--mode all` is a sqevo improvement.
+- **`--mode all` is NOT a single transaction in Sqitch:** Sqitch's `_deploy_all` uses per-change transactions with explicit revert on failure, NOT a single wrapping transaction. Documented accurately. sqlever's true single-transaction `--mode all` is a sqlever improvement.
 
-- **`-- sqitch-no-transaction` does NOT exist in Sqitch:** No evidence found in Sqitch source. Changed to `-- sqevo:no-transaction` as a sqevo-only convention. SA020 reference updated.
+- **`-- sqitch-no-transaction` does NOT exist in Sqitch:** No evidence found in Sqitch source. Changed to `-- sqlever:no-transaction` as a sqlever-only convention. SA020 reference updated.
 
-- **Sqitch uses `LOCK TABLE changes IN EXCLUSIVE MODE`, not advisory locks:** Documented that sqevo's advisory lock approach is a sqevo improvement providing stronger coordination (spans full deploy session vs. per-transaction table lock).
+- **Sqitch uses `LOCK TABLE changes IN EXCLUSIVE MODE`, not advisory locks:** Documented that sqlever's advisory lock approach is a sqlever improvement providing stronger coordination (spans full deploy session vs. per-transaction table lock).
 
-- **`sqevo.pending_changes` schema defined:** DDL specified: `change_id`, `change_name`, `project`, `script_path`, `started_at`, `status` (pending/complete/failed), `error_message`.
+- **`sqlever.pending_changes` schema defined:** DDL specified: `change_id`, `change_name`, `project`, `script_path`, `started_at`, `status` (pending/complete/failed), `error_message`.
 
 - **Non-transactional verify logic specified:** For index operations, check `pg_index.indisvalid`. For other DDL, run the change's verify script. Documented that automated verification only works for known DDL patterns.
 
@@ -101,7 +105,7 @@ Round 3 expert review findings addressed. Same four reviewers: PG internals expe
 
 - **Hybrid rule interface convention documented:** Hybrid rules check `context.db !== undefined` internally. Suppression filtering happens in analyzer entry point after rules return findings. Rules may produce multiple findings from one statement.
 
-- **`--mode all` + non-transactional partial state documented:** Non-transactional changes that committed before a later failure remain deployed. `sqevo status` reports partial state correctly.
+- **`--mode all` + non-transactional partial state documented:** Non-transactional changes that committed before a later failure remain deployed. `sqlever status` reports partial state correctly.
 
 - **`--strict` and `error_on_warn` relationship documented:** `--strict` is the CLI equivalent of `error_on_warn = true` in config.
 
@@ -112,7 +116,7 @@ Round 3 expert review findings addressed. Same four reviewers: PG internals expe
 - `SHOW pool_mode`: documented as best-effort detection, `connection_type` config is the reliable mechanism
 - GitLab Code Quality severity mapping specified: `error` → `critical`, `warn` → `major`, `info` → `minor`
 - GitLab fingerprint specified: SHA-1 of `(ruleId, filePath, line)`
-- Unused suppression warnings: `-- sqevo:disable` matching no finding produces a warning
+- Unused suppression warnings: `-- sqlever:disable` matching no finding produces a warning
 - SA001: removed confusing parenthetical about PG < 11 defaults (that case is SA002b's territory)
 - Change ID requires/conflicts: documented they preserve declaration order (not sorted)
 
@@ -127,7 +131,7 @@ Round 2 expert review findings addressed. Four reviewers: PG internals expert, S
 
 ### Critical fixes
 
-- **Advisory lock design resolved:** Resolved xact vs session lock contradiction. Use `pg_advisory_lock` (session-level) as default — only option that works across multi-transaction deploys (`--mode change`) and non-transactional changes. Lock key: `pg_advisory_lock(hashtext('sqevo_deploy_' || project_name))`. Require direct connections for deploy (not PgBouncer in transaction mode). Apply to revert/rebase/checkout too, not just deploy.
+- **Advisory lock design resolved:** Resolved xact vs session lock contradiction. Use `pg_advisory_lock` (session-level) as default — only option that works across multi-transaction deploys (`--mode change`) and non-transactional changes. Lock key: `pg_advisory_lock(hashtext('sqlever_deploy_' || project_name))`. Require direct connections for deploy (not PgBouncer in transaction mode). Apply to revert/rebase/checkout too, not just deploy.
 
 - **`now()` is STABLE, not VOLATILE:** Removed `now()` from SA002 volatile examples — `now()` returns transaction start time and is classified STABLE. Corrected Problem 1 example text. Correct volatile examples: `random()`, `gen_random_uuid()`, `clock_timestamp()`, `txid_current()`. Updated SA002 test fixtures accordingly.
 
@@ -147,9 +151,9 @@ Round 2 expert review findings addressed. Four reviewers: PG internals expert, S
 
 - **`--mode all` + non-transactional behavior specified:** Non-transactional changes break the transaction (COMMIT before, execute, BEGIN after). Warning emitted when `--mode all` used with non-transactional changes.
 
-- **Non-transactional write-ahead tracking:** Before executing non-transactional DDL, write "pending" record to `sqevo.pending_changes`. After success, update to "complete" and write sqitch tracking. On next deploy, check for pending non-transactional changes and verify state.
+- **Non-transactional write-ahead tracking:** Before executing non-transactional DDL, write "pending" record to `sqlever.pending_changes`. After success, update to "complete" and write sqitch tracking. On next deploy, check for pending non-transactional changes and verify state.
 
-- **`--no-transaction` is a script comment in Sqitch:** Fixed — Sqitch uses `-- sqitch-no-transaction` comment in deploy script first line. sqevo supports both the script comment (Sqitch compat) and plan file pragma.
+- **`--no-transaction` is a script comment in Sqitch:** Fixed — Sqitch uses `-- sqitch-no-transaction` comment in deploy script first line. sqlever supports both the script comment (Sqitch compat) and plan file pragma.
 
 - **Inline suppression scoping specified:** Unclosed block extends to EOF with warning, single-line comment attaches to preceding statement, comma-separated rule IDs supported, unknown rules produce warning, `all` not supported.
 
@@ -161,11 +165,11 @@ Round 2 expert review findings addressed. Four reviewers: PG internals expert, S
 
 - **ALTER TYPE ADD VALUE PG 12+ gotcha documented:** Even in PG 12+ where it can run in a transaction, the new enum value is not usable within the same transaction.
 
-- **Trigger recursion guard changed:** Replaced `pg_trigger_depth() < 2` with session variable approach: `SET LOCAL sqevo.syncing = 'true'` / `current_setting('sqevo.syncing', true)`. More robust in environments with existing triggers.
+- **Trigger recursion guard changed:** Replaced `pg_trigger_depth() < 2` with session variable approach: `SET LOCAL sqlever.syncing = 'true'` / `current_setting('sqlever.syncing', true)`. More robust in environments with existing triggers.
 
-- **search_path OPEN resolved:** Use database/role default (Sqitch-compatible). Override available via `sqevo.toml`.
+- **search_path OPEN resolved:** Use database/role default (Sqitch-compatible). Override available via `sqlever.toml`.
 
-- **application_name added:** Set `application_name = 'sqevo/<command>/<project>'` on deploy/batch connections for production debugging.
+- **application_name added:** Set `application_name = 'sqlever/<command>/<project>'` on deploy/batch connections for production debugging.
 
 - **Advisory locks for revert/rebase/checkout:** Not just deploy — any command modifying tracking state or executing DDL.
 
@@ -197,7 +201,7 @@ Comprehensive update based on expert review from four specialists: PG internals 
 
 ### Critical fixes
 
-- **Non-transactional DDL support (C1):** Added `--no-transaction` flag to `sqevo add` and plan file pragma. Deploy data flow updated to execute non-transactional changes without `BEGIN`/`COMMIT` wrapper. Tracking updates happen in a separate transaction. Covers `CREATE INDEX CONCURRENTLY`, `DROP INDEX CONCURRENTLY`, `ALTER TYPE ADD VALUE` (PG < 12), `REINDEX CONCURRENTLY`. Added SA020 rule to detect `CONCURRENTLY` inside transactional deploys.
+- **Non-transactional DDL support (C1):** Added `--no-transaction` flag to `sqlever add` and plan file pragma. Deploy data flow updated to execute non-transactional changes without `BEGIN`/`COMMIT` wrapper. Tracking updates happen in a separate transaction. Covers `CREATE INDEX CONCURRENTLY`, `DROP INDEX CONCURRENTLY`, `ALTER TYPE ADD VALUE` (PG < 12), `REINDEX CONCURRENTLY`. Added SA020 rule to detect `CONCURRENTLY` inside transactional deploys.
 
 - **Advisory locks for deploy coordination (C2):** Deploy data flow now acquires `pg_advisory_xact_lock` (or `pg_advisory_lock`) before executing changes. Second concurrent deploy exits with code 4. Crash recovery: PG auto-releases advisory locks on disconnect. Added integration tests for concurrent deploy scenarios.
 
@@ -217,7 +221,7 @@ Comprehensive update based on expert review from four specialists: PG internals 
 
 - **pgsql-parser + bun build --compile validation (C10):** Added Phase 0 validation spike for native C addon bundling. Evaluate WASM alternatives if bundling fails. Marked as go/no-go for architecture.
 
-- **Inline suppression for analysis (C11):** Added `-- sqevo:disable SA010` comment syntax and per-file overrides in `sqevo.toml`. Documented in Section 5.1 and included in unit test plan.
+- **Inline suppression for analysis (C11):** Added `-- sqlever:disable SA010` comment syntax and per-file overrides in `sqlever.toml`. Documented in Section 5.1 and included in unit test plan.
 
 - **Expand/contract trigger edge cases (C12):** Added subsection covering: infinite recursion (`pg_trigger_depth()` guard), logical replication (triggers don't fire on subscribers), partitioned tables (PG 13+ for trigger inheritance), COPY performance, trigger installation lock (`AccessExclusiveLock`), concurrency control via advisory locks.
 
@@ -231,7 +235,7 @@ Comprehensive update based on expert review from four specialists: PG internals 
 
 - **PL/pgSQL body exclusion (I4):** DML inside `CREATE FUNCTION`, `CREATE PROCEDURE`, and `DO` blocks excluded from SA010/SA011/SA008. Analysis rules operate on top-level statements only.
 
-- **sqitch.conf format documented (I5):** Added Git-style INI format description with subsections (`[engine "pg"]`), `db:` URI scheme, config precedence hierarchy (system < user < project < sqevo.toml < env < flags).
+- **sqitch.conf format documented (I5):** Added Git-style INI format description with subsections (`[engine "pg"]`), `db:` URI scheme, config precedence hierarchy (system < user < project < sqlever.toml < env < flags).
 
 - **Missing flags added (I6):** `--set`/`-s` (template variables), `--log-only` (adopt existing schemas), `--target`, `--no-verify`, `--verify` added to R1 flags list with descriptions.
 
@@ -239,13 +243,13 @@ Comprehensive update based on expert review from four specialists: PG internals 
 
 - **Lock timeout guard moved to v1.0 (I8):** Moved from v1.1 to v1.0. Core safety infrastructure, not optional.
 
-- **Batch job dead state recovery (I9):** Added `sqevo batch retry` command. Dead jobs can be manually retried. Last processed PK tracked so retried jobs resume from where they stopped.
+- **Batch job dead state recovery (I9):** Added `sqlever batch retry` command. Dead jobs can be manually retried. Last processed PK tracked so retried jobs resume from where they stopped.
 
 - **Replication lag monitoring (I10):** Added to batched DML features. Query `pg_stat_replication.replay_lag`, pause when lag exceeds configurable threshold (default 10s).
 
-- **Reverse handoff test (I11):** Added sqevo→Sqitch compatibility test: deploy with sqevo, verify Sqitch reads tracking tables correctly, add/revert changes with Sqitch.
+- **Reverse handoff test (I11):** Added sqlever→Sqitch compatibility test: deploy with sqlever, verify Sqitch reads tracking tables correctly, add/revert changes with Sqitch.
 
-- **sqevo analyze composability (I12):** `sqevo analyze file.sql` works with zero config. No `sqitch.plan` required. Standalone linter mode for teams using other migration tools. Added `--changed` flag for CI.
+- **sqlever analyze composability (I12):** `sqlever analyze file.sql` works with zero config. No `sqitch.plan` required. Standalone linter mode for teams using other migration tools. Added `--changed` flag for CI.
 
 - **Plan file entry format documented (I13):** `change_name [deps] YYYY-MM-DDTHH:MM:SSZ planner_name <planner_email> # note`.
 
@@ -263,7 +267,7 @@ Comprehensive update based on expert review from four specialists: PG internals 
 
 - **Exit code 127 replaced (I20):** Changed "database unreachable" from 127 to 10. Added exit codes 4 (concurrent deploy) and 5 (lock timeout). Exit code table added to R6.
 
-- **sqevo.* schema documented (I21):** Clarified in DD3 that `sqevo.*` schema is created only when sqevo-specific features are used. Independent of `sqitch.*`. Can be safely dropped if reverting to Sqitch.
+- **sqlever.* schema documented (I21):** Clarified in DD3 that `sqlever.*` schema is created only when sqlever-specific features are used. Independent of `sqitch.*`. Can be safely dropped if reverting to Sqitch.
 
 - **Batch worker connections (I22):** Documented that batch worker requires direct PostgreSQL connection (not PgBouncer in transaction mode). SET statements re-issued per batch transaction.
 
@@ -285,7 +289,7 @@ Comprehensive update based on expert review from four specialists: PG internals 
 - Static analysis moved from v1.1 to v1.0 (core safety infrastructure)
 - CI integration moved from v1.1+ to v1.0+ (aligns with analysis move)
 - Conflict dependency semantics documented in DD6
-- `sqevo analyze` scope defined (file, directory, pending, --all, --changed)
+- `sqlever analyze` scope defined (file, directory, pending, --all, --changed)
 - Registry schema creation specified (IF NOT EXISTS + advisory lock for concurrent first-deploy)
 - Added OPEN markers for: change ID algorithm, script_hash computation, search_path handling, logical replication + expand/contract, PGQ vs SKIP LOCKED queue design, comprehensive SA003 safe-cast list
 - Added `preprocess.ts` to architecture for psql metacommand handling

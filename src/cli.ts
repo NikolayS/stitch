@@ -1,22 +1,22 @@
 #!/usr/bin/env bun
-// sqevo — Sqitch-compatible PostgreSQL migration tool
+// sqlever — Sqitch-compatible PostgreSQL migration tool
 
 const [, , cmd, ...args] = process.argv;
 
 const commands: Record<string, () => void> = {
-  add: () => console.error("sqevo add: not yet implemented"),
-  deploy: () => console.error("sqevo deploy: not yet implemented"),
-  revert: () => console.error("sqevo revert: not yet implemented"),
-  verify: () => console.error("sqevo verify: not yet implemented"),
-  status: () => console.error("sqevo status: not yet implemented"),
-  log: () => console.error("sqevo log: not yet implemented"),
+  add: () => console.error("sqlever add: not yet implemented"),
+  deploy: () => console.error("sqlever deploy: not yet implemented"),
+  revert: () => console.error("sqlever revert: not yet implemented"),
+  verify: () => console.error("sqlever verify: not yet implemented"),
+  status: () => console.error("sqlever status: not yet implemented"),
+  log: () => console.error("sqlever log: not yet implemented"),
 };
 
 if (!cmd || cmd === "--help" || cmd === "-h") {
-  console.log(`sqevo — Sqitch-compatible PostgreSQL migration tool
+  console.log(`sqlever — Sqitch-compatible PostgreSQL migration tool
 
 Usage:
-  sqevo <command> [options]
+  sqlever <command> [options]
 
 Commands:
   add       Add a new migration
@@ -34,7 +34,7 @@ https://github.com/NikolayS/stitch
 
 const handler = commands[cmd];
 if (!handler) {
-  console.error(`sqevo: unknown command '${cmd}'`);
+  console.error(`sqlever: unknown command '${cmd}'`);
   process.exit(1);
 }
 
