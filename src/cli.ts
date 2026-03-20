@@ -2,51 +2,288 @@
 // sqlever — Sqitch-compatible PostgreSQL migration tool
 
 import packageJson from "../package.json";
+import { setConfig, type OutputFormat } from "./output";
 
-const [, , cmd, ...args] = process.argv;
+// ---------------------------------------------------------------------------
+// Command registry — all commands from SPEC R1 plus sqlever extensions
+// ---------------------------------------------------------------------------
 
-const commands: Record<string, () => void> = {
-  add: () => console.error("sqlever add: not yet implemented"),
-  deploy: () => console.error("sqlever deploy: not yet implemented"),
-  revert: () => console.error("sqlever revert: not yet implemented"),
-  verify: () => console.error("sqlever verify: not yet implemented"),
-  status: () => console.error("sqlever status: not yet implemented"),
-  log: () => console.error("sqlever log: not yet implemented"),
+/** Description for each supported command, used in --help output. */
+const COMMANDS: Record<string, string> = {
+  init: "Initialize project, create sqitch.conf and sqitch.plan",
+  add: "Add a new migration change",
+  deploy: "Deploy changes to a database",
+  revert: "Revert changes from a database",
+  verify: "Run verify scripts against a database",
+  status: "Show deployment status",
+  log: "Show deployment history",
+  tag: "Tag the current deployment state",
+  rework: "Rework an existing change",
+  rebase: "Revert then re-deploy changes",
+  bundle: "Package project for distribution",
+  checkout: "Deploy/revert changes to match a VCS branch",
+  show: "Display change/tag details or script contents",
+  plan: "Display plan contents",
+  upgrade: "Upgrade the registry schema to current version",
+  engine: "Manage database engines",
+  target: "Manage deploy targets",
+  config: "Read/write configuration",
+  analyze: "Analyze migration SQL for dangerous patterns",
+  explain: "Explain what a migration does in plain language",
+  review: "Review migrations for issues",
+  batch: "Manage batched background data migrations",
+  diff: "Show differences between plan states",
+  help: "Show help for a command",
 };
 
-if (cmd === "--version" || cmd === "-V") {
-  console.log(packageJson.version);
-  process.exit(0);
+/** Sorted command names for display. */
+const COMMAND_NAMES = Object.keys(COMMANDS).sort();
+
+// ---------------------------------------------------------------------------
+// Flag parsing
+// ---------------------------------------------------------------------------
+
+export interface ParsedArgs {
+  /** The command to run (e.g. "deploy"), or undefined if none given. */
+  command: string | undefined;
+  /** Remaining positional arguments after the command. */
+  rest: string[];
+  /** --help / -h */
+  help: boolean;
+  /** --version / -V */
+  version: boolean;
+  /** --format json|text */
+  format: OutputFormat;
+  /** --quiet / -q */
+  quiet: boolean;
+  /** --verbose / -v */
+  verbose: boolean;
+  /** --db-uri <uri> */
+  dbUri: string | undefined;
+  /** --plan-file <path> */
+  planFile: string | undefined;
+  /** --top-dir <path> */
+  topDir: string | undefined;
+  /** --registry <name> */
+  registry: string | undefined;
+  /** --target <target> */
+  target: string | undefined;
 }
 
-if (!cmd || cmd === "--help" || cmd === "-h") {
-  console.log(`sqlever — Sqitch-compatible PostgreSQL migration tool
+/**
+ * Parse argv into structured args. Extracts top-level flags that appear
+ * before or after the command. The first non-flag token is treated as the
+ * command; everything after it goes into `rest`.
+ */
+export function parseArgs(argv: string[]): ParsedArgs {
+  const result: ParsedArgs = {
+    command: undefined,
+    rest: [],
+    help: false,
+    version: false,
+    format: "text",
+    quiet: false,
+    verbose: false,
+    dbUri: undefined,
+    planFile: undefined,
+    topDir: undefined,
+    registry: undefined,
+    target: undefined,
+  };
+
+  let i = 0;
+  while (i < argv.length) {
+    const arg = argv[i]!;
+
+    // --- Boolean flags ---
+    if (arg === "--help" || arg === "-h") {
+      result.help = true;
+      i++;
+      continue;
+    }
+    if (arg === "--version" || arg === "-V") {
+      result.version = true;
+      i++;
+      continue;
+    }
+    if (arg === "--quiet" || arg === "-q") {
+      result.quiet = true;
+      i++;
+      continue;
+    }
+    if (arg === "--verbose" || arg === "-v") {
+      result.verbose = true;
+      i++;
+      continue;
+    }
+
+    // --- Value flags ---
+    if (arg === "--format") {
+      const val = argv[i + 1];
+      if (val === "json" || val === "text") {
+        result.format = val;
+      } else {
+        process.stderr.write(
+          `sqlever: invalid --format value '${val ?? ""}'. Expected 'text' or 'json'.\n`,
+        );
+        process.exit(1);
+      }
+      i += 2;
+      continue;
+    }
+    if (arg === "--db-uri") {
+      result.dbUri = argv[++i];
+      i++;
+      continue;
+    }
+    if (arg === "--plan-file") {
+      result.planFile = argv[++i];
+      i++;
+      continue;
+    }
+    if (arg === "--top-dir") {
+      result.topDir = argv[++i];
+      i++;
+      continue;
+    }
+    if (arg === "--registry") {
+      result.registry = argv[++i];
+      i++;
+      continue;
+    }
+    if (arg === "--target") {
+      result.target = argv[++i];
+      i++;
+      continue;
+    }
+
+    // --- Command or positional argument ---
+    if (result.command === undefined) {
+      result.command = arg;
+    } else {
+      result.rest.push(arg);
+    }
+    i++;
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Help text
+// ---------------------------------------------------------------------------
+
+function printTopLevelHelp(): void {
+  const maxLen = Math.max(...COMMAND_NAMES.map((c) => c.length));
+  const cmdLines = COMMAND_NAMES.map(
+    (c) => `  ${c.padEnd(maxLen)}  ${COMMANDS[c]}`,
+  ).join("\n");
+
+  process.stdout.write(`sqlever — Sqitch-compatible PostgreSQL migration tool
 
 Usage:
   sqlever <command> [options]
 
 Commands:
-  add       Add a new migration
-  deploy    Deploy migrations
-  revert    Revert migrations
-  verify    Verify deployed migrations
-  status    Show deployment status
-  log       Show deployment log
+${cmdLines}
 
-Options:
-  --help, -h       Show this help message
-  --version, -V    Show version number
+Global options:
+  --help, -h         Show this help message
+  --version, -V      Show version number
+  --format <fmt>     Output format: text (default) or json
+  --quiet, -q        Suppress informational output
+  --verbose, -v      Show verbose/debug output
+  --db-uri <uri>     Database connection URI
+  --plan-file <path> Path to plan file (default: sqitch.plan)
+  --top-dir <path>   Path to project top directory
+  --registry <name>  Registry schema name (default: sqitch)
+  --target <target>  Deploy target name
 
-Not yet implemented — contributions welcome.
 https://github.com/NikolayS/sqlever
 `);
-  process.exit(0);
 }
 
-const handler = commands[cmd];
-if (!handler) {
-  console.error(`sqlever: unknown command '${cmd}'`);
+function printCommandHelp(command: string): void {
+  if (!(command in COMMANDS)) {
+    process.stderr.write(`sqlever: unknown command '${command}'\n`);
+    process.exit(1);
+  }
+  process.stdout.write(
+    `sqlever ${command} — ${COMMANDS[command]}\n\nNo detailed help available yet.\n`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Command dispatch
+// ---------------------------------------------------------------------------
+
+function stubHandler(command: string): never {
+  process.stderr.write(`sqlever ${command}: not yet implemented\n`);
   process.exit(1);
+  // TypeScript needs this even though process.exit() is noreturn
+  throw new Error("unreachable");
 }
 
-handler();
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+export function main(argv: string[] = process.argv.slice(2)): void {
+  const args = parseArgs(argv);
+
+  // --version takes precedence (matches Sqitch behavior)
+  if (args.version) {
+    process.stdout.write(packageJson.version + "\n");
+    process.exit(0);
+  }
+
+  // Wire up the output module based on parsed flags
+  setConfig({
+    format: args.format,
+    quiet: args.quiet,
+    verbose: args.verbose,
+  });
+
+  // --help with no command => top-level help
+  if (args.help && !args.command) {
+    printTopLevelHelp();
+    process.exit(0);
+  }
+
+  // No command at all => top-level help
+  if (!args.command) {
+    printTopLevelHelp();
+    process.exit(0);
+  }
+
+  // --help with a command => command-specific help
+  if (args.help) {
+    printCommandHelp(args.command);
+    process.exit(0);
+  }
+
+  // "help" command — treat like --help for the next argument
+  if (args.command === "help") {
+    const subcommand = args.rest[0];
+    if (subcommand) {
+      printCommandHelp(subcommand);
+    } else {
+      printTopLevelHelp();
+    }
+    process.exit(0);
+  }
+
+  // Unknown command
+  if (!(args.command in COMMANDS)) {
+    process.stderr.write(`sqlever: unknown command '${args.command}'\n`);
+    process.exit(1);
+  }
+
+  // Known command — stub handler
+  stubHandler(args.command);
+}
+
+// Run when executed directly (not when imported by tests)
+if (import.meta.main) {
+  main();
+}
