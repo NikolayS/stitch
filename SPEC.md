@@ -43,7 +43,10 @@ https://github.com/mickelsamuel/migrationpilot — static analysis of migration 
 
 ### GitLab migration helpers
 
-https://gitlab.com/gitlab-org/gitlab/-/tree/master/lib/gitlab/database/migration_helpers
+Source: https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/database/migration_helpers.rb
+Batched background migrations docs: https://docs.gitlab.com/development/database/batched_background_migrations/
+Migration style guide: https://docs.gitlab.com/development/migration_style_guide/
+Migration pipeline (how GitLab tests migrations): https://docs.gitlab.com/development/database/database_migration_pipeline/
 
 Battle-tested at massive scale. `BatchedMigration` framework: throttled background DML, pause/resume, per-batch transactions, state tracked in Postgres. The gold standard for large-table data migrations. We extract the concepts, drop the Rails dependency.
 
@@ -275,6 +278,8 @@ stitch batch cancel backfill_user_tier
 - Progress: rows done / rows remaining / ETA
 - Per-batch transaction — each batch commits independently
 - Inspired by GitLab `BatchedMigration`: throttling, pause/resume, retry, state tracking in Postgres
+  - https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/database/migration_helpers.rb
+  - https://docs.gitlab.com/development/database/batched_background_migrations/
 
 ### 5.6 CI integration (v1.1+)
 
