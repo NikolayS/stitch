@@ -1,8 +1,9 @@
 # stitch — Product Specification
 
 - **Version:** 0.2 (draft)
-- **Status:** Pre-development
+- **Status:** Pre-development — spec review in progress, no implementation yet
 - **License:** Apache 2.0
+- **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
