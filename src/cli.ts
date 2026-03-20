@@ -8,6 +8,7 @@ import { parseAddArgs, runAdd } from "./commands/add";
 import { runLogCommand } from "./commands/log";
 import { runRevert } from "./commands/revert";
 import { parseTagArgs, runTag } from "./commands/tag";
+import { parseReworkArgs, runRework } from "./commands/rework";
 
 // ---------------------------------------------------------------------------
 // Command registry — all commands from SPEC R1 plus sqlever extensions
@@ -326,6 +327,16 @@ export function main(argv: string[] = process.argv.slice(2)): void {
     tagOpts.topDir = args.topDir;
     runTag(tagOpts).catch((err: unknown) => {
       process.stderr.write(`sqlever tag: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    });
+    return;
+  }
+
+  if (args.command === "rework") {
+    const reworkOpts = parseReworkArgs(args.rest);
+    reworkOpts.topDir = args.topDir;
+    runRework(reworkOpts).catch((err: unknown) => {
+      process.stderr.write(`sqlever rework: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exit(1);
     });
     return;
