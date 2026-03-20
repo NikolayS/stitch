@@ -1,0 +1,19 @@
+{
+  "name": "stitch",
+  "version": "0.1.0",
+  "description": "Sqitch-compatible PostgreSQL migration tool",
+  "type": "module",
+  "bin": {
+    "stitch": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "bun build src/cli.ts --compile --outfile dist/stitch",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "dependencies": {
+    "pg": "^8.11.0"
+  }
+}
