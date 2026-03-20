@@ -4,6 +4,66 @@ All notable changes to the stitch spec and codebase will be documented here.
 
 ## [Unreleased]
 
+## [SPEC 0.5] — 2026-03-20
+
+Round 3 expert review findings addressed. Same four reviewers: PG internals expert, Sqitch power user, production SRE, static analysis engineer. Additional research: pg_index_pilot architecture analysis. Focus on correcting ID algorithms verified against Sqitch source, fixing tracking schema to match actual Sqitch DDL, and resolving advisory lock API mismatch.
+
+### Critical fixes
+
+- **Change ID algorithm corrected:** The v0.4 format was wrong. Fixed to match `App::Sqitch::Plan::Change->info` exactly: `uri` line conditional on `%uri` pragma, `parent` line for reworked changes, requires/conflicts use section headers with indented `  + dep` / `  - dep` entries (not `require <dep>` per line), note is raw text after a blank line (not `note <text>`). Every field format difference produces a different SHA-1.
+
+- **Tag ID algorithm corrected:** Fixed to match `App::Sqitch::Plan::Tag->info`: added conditional `uri` line and conditional note (raw text after blank line).
+
+- **script_hash is plain SHA-1, NOT git-style:** Sqitch does `SHA1(raw_file_content)` with NO `"blob <size>\0"` prefix. The v0.4 spec incorrectly claimed git-style blob hashing. Fixed. Clarified that for reworked changes, the hash is computed from the file at deploy time.
+
+### Important fixes
+
+- **Tracking schema corrections:** Added missing `sqitch.releases` table (registry versioning). Fixed `projects.uri` to include `UNIQUE` constraint. Changed all default timestamps from `NOW()` to `clock_timestamp()` (wall-clock time, advances within transaction). Added `ON UPDATE CASCADE` on all foreign key references. Added `UNIQUE(project, script_hash)` on changes table. Fixed events table — it DOES have `PRIMARY KEY (change_id, committed_at)`. Added `merge` to events type CHECK constraint. Added missing CHECK constraint on dependencies table. Reordered DDL to show projects first (referenced by other tables).
+
+- **`pg_advisory_lock` replaced with `pg_try_advisory_lock`:** Default mode is now non-blocking — `pg_try_advisory_lock()` returns false immediately if lock held, matching "exit 4" behavior. Added configurable `advisory_lock_timeout` (default 30s) for CI wait mode using `pg_advisory_lock` with `SET lock_timeout`. Default: try, fail fast.
+
+- **`hashtext()` instability resolved:** Replaced `hashtext('stitch_deploy_' || project_name)` with application-level hash. Lock key uses two-argument form `pg_advisory_lock(constant_namespace, project_hash)` with a stable application-computed hash. `hashtext()` output is not guaranteed stable across PG major versions.
+
+- **SET LOCAL trigger guard replaced:** `SET LOCAL stitch.syncing = 'true'` remains true for the entire transaction, suppressing ALL subsequent trigger fires. Replaced with `pg_trigger_depth()` scoped to stitch triggers via `TG_NAME LIKE 'stitch_sync_%'`. All stitch-generated sync triggers must use the `stitch_sync_` name prefix.
+
+- **SA016 lock level corrected:** Reverted PG < 16 lock from `ShareLock` to `AccessExclusiveLock`. `ADD CONSTRAINT ... CHECK` (with immediate validation) takes `AccessExclusiveLock` on PG < 16, `ShareUpdateExclusiveLock` on PG 16+.
+
+- **`--mode all` is NOT a single transaction in Sqitch:** Sqitch's `_deploy_all` uses per-change transactions with explicit revert on failure, NOT a single wrapping transaction. Documented accurately. stitch's true single-transaction `--mode all` is a stitch improvement.
+
+- **`-- sqitch-no-transaction` does NOT exist in Sqitch:** No evidence found in Sqitch source. Changed to `-- stitch:no-transaction` as a stitch-only convention. SA020 reference updated.
+
+- **Sqitch uses `LOCK TABLE changes IN EXCLUSIVE MODE`, not advisory locks:** Documented that stitch's advisory lock approach is a stitch improvement providing stronger coordination (spans full deploy session vs. per-transaction table lock).
+
+- **`stitch.pending_changes` schema defined:** DDL specified: `change_id`, `change_name`, `project`, `script_path`, `started_at`, `status` (pending/complete/failed), `error_message`.
+
+- **Non-transactional verify logic specified:** For index operations, check `pg_index.indisvalid`. For other DDL, run the change's verify script. Documented that automated verification only works for known DDL patterns.
+
+- **Batch worker heartbeat added:** `heartbeat_at` column updated each batch. Configurable staleness threshold (default 5 minutes). Dead workers detected and jobs marked failed.
+
+- **pg_index_pilot added to prior art:** Key patterns: write-ahead tracking (`in_progress` → `completed` | `failed`) for crash recovery, advisory lock using `pg_try_advisory_lock`, invalid index cleanup via `pg_index.indisvalid`. Added to Section 1 and prior art summary table.
+
+- **Hybrid rule interface convention documented:** Hybrid rules check `context.db !== undefined` internally. Suppression filtering happens in analyzer entry point after rules return findings. Rules may produce multiple findings from one statement.
+
+- **`--mode all` + non-transactional partial state documented:** Non-transactional changes that committed before a later failure remain deployed. `stitch status` reports partial state correctly.
+
+- **`--strict` and `error_on_warn` relationship documented:** `--strict` is the CLI equivalent of `error_on_warn = true` in config.
+
+### Minor fixes
+
+- SA009: corrected lock on referenced table to "brief" (still blocks concurrent DDL)
+- script_hash for reworked changes: clarified it's computed from the file at deploy time
+- `SHOW pool_mode`: documented as best-effort detection, `connection_type` config is the reliable mechanism
+- GitLab Code Quality severity mapping specified: `error` → `critical`, `warn` → `major`, `info` → `minor`
+- GitLab fingerprint specified: SHA-1 of `(ruleId, filePath, line)`
+- Unused suppression warnings: `-- stitch:disable` matching no finding produces a warning
+- SA001: removed confusing parenthetical about PG < 11 defaults (that case is SA002b's territory)
+- Change ID requires/conflicts: documented they preserve declaration order (not sorted)
+
+### Other changes
+
+- Version bumped to 0.5
+- Remaining OPEN markers (4): SA003 safe-cast list (needs `pg_cast` audit), logical replication + expand/contract, PGQ vs SKIP LOCKED, DD12 psql vs node-postgres
+
 ## [SPEC 0.4] — 2026-03-20
 
 Round 2 expert review findings addressed. Four reviewers: PG internals expert, Sqitch power user, production SRE, static analysis engineer. Focus on resolving contradictions, closing OPEN markers, and correcting factual errors.
