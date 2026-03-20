@@ -308,8 +308,8 @@ describe("unknown commands", () => {
 // ---------------------------------------------------------------------------
 
 describe("command stubs", () => {
-  // "help" is handled specially (not a stub); "init", "add", "deploy", "log", "revert", "verify", "tag", "rework", "show", "status", and "plan" are implemented — exclude them
-  const STUB_COMMANDS = ALL_COMMANDS.filter((c) => c !== "help" && c !== "init" && c !== "add" && c !== "deploy" && c !== "log" && c !== "revert" && c !== "verify" && c !== "tag" && c !== "rework" && c !== "show" && c !== "status" && c !== "plan");
+  // "help" is handled specially (not a stub); "init", "add", "deploy", "log", "revert", "verify", "tag", "rework", "show", "status", "plan", and "analyze" are implemented — exclude them
+  const STUB_COMMANDS = ALL_COMMANDS.filter((c) => c !== "help" && c !== "init" && c !== "add" && c !== "deploy" && c !== "log" && c !== "revert" && c !== "verify" && c !== "tag" && c !== "rework" && c !== "show" && c !== "status" && c !== "plan" && c !== "analyze");
 
   for (const cmd of STUB_COMMANDS) {
     test(`'${cmd}' prints not-yet-implemented and exits 1`, async () => {

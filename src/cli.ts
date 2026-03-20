@@ -14,6 +14,7 @@ import { parseReworkArgs, runRework } from "./commands/rework";
 import { parseShowArgs, runShow } from "./commands/show";
 import { runPlan } from "./commands/plan";
 import { runVerify } from "./commands/verify";
+import { parseAnalyzeArgs, runAnalyze } from "./commands/analyze";
 
 // ---------------------------------------------------------------------------
 // Command registry — all commands from SPEC R1 plus sqlever extensions
@@ -397,6 +398,16 @@ export function main(argv: string[] = process.argv.slice(2)): void {
 
   if (args.command === "plan") {
     runPlan(args);
+    return;
+  }
+
+  if (args.command === "analyze") {
+    const analyzeOpts = parseAnalyzeArgs(args.rest);
+    if (args.topDir !== undefined) analyzeOpts.topDir = args.topDir;
+    if (args.planFile !== undefined) analyzeOpts.planFile = args.planFile;
+    runAnalyze(analyzeOpts)
+      .then((result) => { if (result.exitCode !== 0) process.exit(result.exitCode); })
+      .catch((err: unknown) => { process.stderr.write(`sqlever analyze: ${err instanceof Error ? err.message : String(err)}\n`); process.exit(1); });
     return;
   }
 
