@@ -11,6 +11,7 @@ import { runRevert } from "./commands/revert";
 import { parseTagArgs, runTag } from "./commands/tag";
 import { parseReworkArgs, runRework } from "./commands/rework";
 import { parseShowArgs, runShow } from "./commands/show";
+import { runPlan } from "./commands/plan";
 
 // ---------------------------------------------------------------------------
 // Command registry — all commands from SPEC R1 plus sqlever extensions
@@ -363,6 +364,11 @@ export function main(argv: string[] = process.argv.slice(2)): void {
       process.stderr.write(`sqlever status: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exit(1);
     });
+    return;
+  }
+
+  if (args.command === "plan") {
+    runPlan(args);
     return;
   }
 
