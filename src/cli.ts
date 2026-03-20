@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 // sqlever — Sqitch-compatible PostgreSQL migration tool
 
+import packageJson from "../package.json";
+
 const [, , cmd, ...args] = process.argv;
 
 const commands: Record<string, () => void> = {
@@ -11,6 +13,11 @@ const commands: Record<string, () => void> = {
   status: () => console.error("sqlever status: not yet implemented"),
   log: () => console.error("sqlever log: not yet implemented"),
 };
+
+if (cmd === "--version" || cmd === "-V") {
+  console.log(packageJson.version);
+  process.exit(0);
+}
 
 if (!cmd || cmd === "--help" || cmd === "-h") {
   console.log(`sqlever — Sqitch-compatible PostgreSQL migration tool
@@ -26,8 +33,12 @@ Commands:
   status    Show deployment status
   log       Show deployment log
 
+Options:
+  --help, -h       Show this help message
+  --version, -V    Show version number
+
 Not yet implemented — contributions welcome.
-https://github.com/NikolayS/stitch
+https://github.com/NikolayS/sqlever
 `);
   process.exit(0);
 }
