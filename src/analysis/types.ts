@@ -24,6 +24,9 @@ export interface FindingLocation {
   endColumn?: number;
 }
 
+/** Alias for FindingLocation — used by rule implementations. */
+export type Location = FindingLocation;
+
 /** A single finding produced by a rule. */
 export interface Finding {
   ruleId: string;
@@ -98,6 +101,8 @@ export interface AnalysisContext {
   config: AnalysisConfig;
   /** Database client, present only for connected/hybrid rules with active connection. */
   db?: DatabaseClient;
+  /** Whether this file is in a revert context (e.g. under revert/ in a sqitch project). */
+  isRevertContext?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,4 +144,80 @@ export interface AnalyzeOptions {
   pgVersion?: number;
   /** Whether to treat the file as a revert script (affects SA007 etc.). */
   isRevert?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Utility functions
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a byte offset in the source SQL to a 1-based line and column.
+ */
+export function offsetToLocation(
+  rawSql: string,
+  byteOffset: number,
+  filePath: string,
+): Location {
+  let line = 1;
+  let col = 1;
+  const len = Math.min(byteOffset, rawSql.length);
+  for (let i = 0; i < len; i++) {
+    if (rawSql[i] === "\n") {
+      line++;
+      col = 1;
+    } else {
+      col++;
+    }
+  }
+  return { file: filePath, line, column: col };
+}
+
+/**
+ * Extract the type name string from a libpg-query TypeName node.
+ * Returns the last name part (e.g. "varchar", "int4", "text").
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function extractTypeName(typeName: any): string | null {
+  if (!typeName?.names) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const names = typeName.names as any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const last = names[names.length - 1];
+  return last?.String?.sval ?? null;
+}
+
+/**
+ * Extract type modifiers (e.g. length for varchar, precision/scale for numeric).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function extractTypeMods(typeName: any): number[] {
+  if (!typeName?.typmods) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (typeName.typmods as any[])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((m: any) => m?.A_Const?.ival?.ival)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((v: any): v is number => typeof v === "number");
+}
+
+/**
+ * Get the fully-qualified type name for display purposes.
+ * Skips "pg_catalog" schema prefix.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function displayTypeName(typeName: any): string {
+  if (!typeName?.names) return "unknown";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const names = (typeName.names as any[])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((n: any) => n?.String?.sval)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((s: any): s is string => !!s)
+    .filter((s: string) => s !== "pg_catalog");
+  const base = names.join(".");
+  const mods = extractTypeMods(typeName);
+  if (mods.length > 0) {
+    return `${base}(${mods.join(",")})`;
+  }
+  return base;
 }

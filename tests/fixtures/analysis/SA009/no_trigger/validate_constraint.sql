@@ -1,0 +1,1 @@
+ALTER TABLE orders VALIDATE CONSTRAINT fk_orders_user;

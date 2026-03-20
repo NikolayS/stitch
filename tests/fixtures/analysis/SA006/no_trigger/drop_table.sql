@@ -1,0 +1,2 @@
+-- DROP TABLE is SA007, not SA006
+DROP TABLE users;

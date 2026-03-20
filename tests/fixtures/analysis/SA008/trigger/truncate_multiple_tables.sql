@@ -1,0 +1,1 @@
+TRUNCATE users, orders, events;

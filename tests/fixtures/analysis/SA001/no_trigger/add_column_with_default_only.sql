@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN score integer DEFAULT 100;
