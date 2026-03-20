@@ -2,5 +2,6 @@ node_modules/
 dist/
 *.js
 *.d.ts
+!src/**/*.d.ts
 .env
 bun.lockb
