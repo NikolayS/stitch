@@ -1,6 +1,6 @@
 # stitch — Product Specification
 
-- **Version:** 0.7 (draft)
+- **Version:** 0.7.1 (draft)
 - **Status:** Pre-development — spec review in progress, no implementation yet
 - **License:** Apache 2.0
 - **Changelog:** [SPEC-CHANGELOG.md](SPEC-CHANGELOG.md)
@@ -87,6 +87,8 @@ Backfilling a new column across 100M rows in a single transaction locks the tabl
 ### Problem 5: `\i` includes are not version-aware
 
 Sqitch supports `\i file.sql` to include shared SQL. But if `shared/functions.sql` changes after a migration is written, replaying that migration on a fresh database uses the *current* version of the file — not the version that existed when the migration was created. Silent correctness bug, especially painful in CI.
+
+**Real-world example:** The PostgresAI Console project (`postgres-ai/platform-ui/db`) has 130+ shared function files, 56+ view files, and 30+ trigger files — all included via `\i` in deploy scripts. One migration includes 96 files. When these shared files evolve (which they do regularly), historical migrations silently change behavior on replay. Git-correlated snapshot includes (Section 5.2) would resolve each `\i` to the exact file version that existed when the migration was added to the plan, making fresh-database deployments reproducible.
 
 ### Problem 6: Migration tooling is invisible to AI agents
 
@@ -1087,6 +1089,7 @@ PG < 14 is best-effort/untested. Version-aware rules (SA002b) still fire based o
 | `revert` | Reverts in reverse dependency order, updates tracking tables |
 | `revert --to` | Reverts to specified change, not further |
 | `verify` | Runs verify script, PASS/FAIL per change, correct exit code |
+| `deploy --verify` | Run verify after each change; if verify script is missing for a change, skip verification for that change (do not error) |
 | `status` | Correct pending count, deployed count, last deployed change |
 | `log` | Full history in correct order, timestamps reasonable |
 | `tag` | Tag appears in plan, visible in status/log |
@@ -1096,6 +1099,8 @@ PG < 14 is best-effort/untested. Version-aware rules (SA002b) still fire based o
 - Deploy script fails (SQL error): tracking tables left consistent, revert possible
 - Deploy script fails mid-batch (multiple changes): partial state recoverable
 - Verify script fails: correct exit code 3, clear output
+- Verify script missing (with `--verify`): skip verification for that change, do not error
+- Revert script raises exception (non-revertable migration): log failure, record `fail` event, tracking state consistent
 - Database unreachable: exit code 10, clear error message
 - Concurrent deploy from two processes: second process gets exit code 4, first completes
 - Non-transactional deploy fails: INVALID index detected, clear guidance on cleanup
@@ -1158,8 +1163,13 @@ The most important test suite. Sqitch is the ground truth. We run identical oper
 | `conflicts/` | Changes with conflict dependencies |
 | `non-transactional/` | Changes marked `--no-transaction` |
 | `mid-deploy/` | Project partially deployed by Sqitch, stitch continues |
+| `planner-edge-cases/` | Plan entries with commas in planner names (`First,Last,,`), trailing spaces, blank lines mid-plan |
+| `missing-verify/` | Deploy scripts with no corresponding verify file; test `--verify` skips gracefully |
+| `non-revertable/` | Revert script that raises an exception; test graceful failure handling |
+| `heavy-includes/` | 50+ `\i` includes per migration, both repo-relative and `\ir` script-relative paths |
 | `real-world-1/` | Anonymized real project, ~50 changes |
 | `real-world-2/` | Anonymized real project, ~200 changes, multiple tags |
+| `postgres-ai-console/` | PostgresAI Console (`postgres-ai/platform-ui/db`) — 255 sequential changes, heavy `\i`/`\ir` usage (130+ shared functions, 56+ views, 30+ triggers), `%uri` with URL, commas in planner names, missing verify scripts. **Customer zero: stitch must be a 100% drop-in replacement for this project.** |
 
 **The "mid-deploy handoff" test** — most important for adoption:
 1. Deploy first half of project with real Sqitch

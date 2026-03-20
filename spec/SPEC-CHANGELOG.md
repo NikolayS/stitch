@@ -4,6 +4,16 @@ All notable changes to the stitch spec and codebase will be documented here.
 
 ## [Unreleased]
 
+## [SPEC 0.7.1] — 2026-03-20
+
+Customer zero validation: PostgresAI Console (`postgres-ai/platform-ui/db`).
+
+- Added `postgres-ai-console/` to test fixture corpus as named customer zero fixture
+- Added edge case fixtures: `planner-edge-cases/`, `missing-verify/`, `non-revertable/`, `heavy-includes/`
+- Specified missing verify script behavior: `--verify` skips gracefully when verify file absent
+- Specified non-revertable migration handling: log failure, record `fail` event
+- Strengthened Problem 5 with real-world example (130+ shared files included via `\i`)
+
 ## [SPEC 0.7] — 2026-03-20
 
 - **DD12 RESOLVED: Shell out to psql.** 100% psql metacommand compatibility — no subset, no reimplementation. `\i`, `\ir`, `\set`, `\copy`, `\if` all work exactly as in Sqitch. `node-postgres` used only for stitch's own DB operations (tracking tables, advisory locks, introspection, batch DML). This was the last major OPEN blocking implementation.
