@@ -60,6 +60,31 @@ https://github.com/pgq/pgq — 3-partition rotating queue table, entirely inside
 
 https://gitlab.com/postgres-ai/postgresai/-/tree/main/components/index_pilot — pure PL/pgSQL tool for managing `REINDEX INDEX CONCURRENTLY` operations. Key design patterns relevant to sqlever: (1) write-ahead tracking with three-state lifecycle (`in_progress` → `completed` | `failed`) for crash recovery of non-transactional DDL, (2) advisory lock coordination using schema OID and `pg_try_advisory_lock()` to prevent concurrent operations, (3) invalid index cleanup by checking `pg_index.indisvalid` and dropping `_ccnew` suffixed indexes left by failed `REINDEX CONCURRENTLY`, (4) explicit pre-DDL commit to release held locks before executing concurrent DDL. These patterns informed sqlever's non-transactional write-ahead tracking and `sqlever.pending_changes` design.
 
+### Atlas (Ariga)
+
+https://github.com/ariga/atlas — Go-based, multi-database schema management tool with declarative and versioned migration workflows. Best-in-class schema diffing engine. `atlas migrate lint` provides static analysis for migrations.
+
+**What we study and take inspiration from:**
+- ~12 analysis rules we're missing that Atlas has: `DROP SCHEMA` (DS101), unique index on existing columns (MF101/MF102), stored generated column rewrite (PG309), identity column rewrite (PG310), access method change rewrite (PG311), PK on nullable columns (PG304), constraint drops (CD101-CD103), nested transactions (TX201)
+- `force` config to make critical rules un-suppressible — add `[analysis] force = ["SA007", "SA003"]` to `sqlever.toml`
+- Structured fix suggestions with line-level edits (`fix: { line, replacement }`) for auto-apply tooling
+- PR comment reports as a CI output format (`sqlever analyze --format pr-comment`)
+- Migration directory change detection in CI `paths` filter
+
+**What we don't take:**
+- HCL configuration — too complex, TOML is better DX
+- Declarative schema management — different philosophy (we are imperative/versioned, like Sqitch)
+- Dev-database requirement for linting — our hybrid static/connected model is more flexible and lower-friction
+- Go template output formatting — our named formats are better DX
+- Multi-database abstraction — we go deep on PostgreSQL instead
+
+**Key competitive differentiators vs Atlas:**
+- Sqitch compatibility (Atlas has zero — teams on Sqitch have no migration path to Atlas)
+- PostgreSQL depth (advisory locks, PgBouncer detection, `pg_index.indisvalid`, replication lag monitoring)
+- Non-transactional DDL write-ahead tracking (Atlas's `--tx-mode none` has no crash recovery)
+- Expand/contract + Batched DML (Atlas has neither)
+- All features open source — Atlas paywalls PG-specific lint rules (PG101-PG311), CI integrations, rollback, and schema testing behind a Pro tier. sqlever ships all safety features for free.
+
 ### Flyway / Liquibase
 
 Sequential-numbered files, XML/YAML config, JVM runtime. Wrong philosophy. We take nothing.
@@ -1514,6 +1539,7 @@ After this phase: drop-in replacement for all Sqitch commands.
 | GitLab migration helpers | Batched DML design, throttling, retry, replication lag monitoring | Rails dependency |
 | SkyTools PGQ | 3-partition queue architecture | External daemon |
 | pg_index_pilot | Write-ahead tracking, advisory lock patterns, invalid index cleanup | PL/pgSQL-only, dblink architecture |
+| Atlas (Ariga) | ~12 missing analysis rules, `force` config, structured fix suggestions, PR comment reports | HCL config, declarative schema, dev-database requirement, multi-DB abstraction, Pro paywall on PG safety rules |
 | Flyway / Liquibase | Nothing | Wrong philosophy |
 
 ---
