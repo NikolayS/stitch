@@ -4,6 +4,7 @@
 import packageJson from "../package.json";
 import { runInit } from "./commands/init";
 import { setConfig, type OutputFormat } from "./output";
+import { parseAddArgs, runAdd } from "./commands/add";
 
 // ---------------------------------------------------------------------------
 // Command registry — all commands from SPEC R1 plus sqlever extensions
@@ -285,6 +286,16 @@ export function main(argv: string[] = process.argv.slice(2)): void {
     runInit(args).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       process.stderr.write(`sqlever init: ${msg}\n`);
+      process.exit(1);
+    });
+    return;
+  }
+
+  if (args.command === "add") {
+    const addOpts = parseAddArgs(args.rest);
+    addOpts.topDir = args.topDir;
+    runAdd(addOpts).catch((err: unknown) => {
+      process.stderr.write(`sqlever add: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exit(1);
     });
     return;
