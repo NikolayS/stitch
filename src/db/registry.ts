@@ -504,6 +504,37 @@ export class Registry {
     );
   }
 
+  /**
+   * Record a deploy failure event.
+   *
+   * Inserts a 'fail' event into sqitch.events. Does NOT insert into
+   * sqitch.changes (the change was never successfully deployed).
+   */
+  async recordFail(input: RecordDeployInput): Promise<void> {
+    await this.db.query(
+      `INSERT INTO sqitch.events (event, change_id, change, project, note,
+                                  requires, conflicts, tags,
+                                  committer_name, committer_email,
+                                  planned_at, planner_name, planner_email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [
+        "fail",
+        input.change_id,
+        input.change,
+        input.project,
+        input.note,
+        input.requires,
+        input.conflicts,
+        input.tags,
+        input.committer_name,
+        input.committer_email,
+        input.planned_at,
+        input.planner_name,
+        input.planner_email,
+      ],
+    );
+  }
+
   // -----------------------------------------------------------------------
   // Events
   // -----------------------------------------------------------------------

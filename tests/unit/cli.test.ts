@@ -308,8 +308,8 @@ describe("unknown commands", () => {
 // ---------------------------------------------------------------------------
 
 describe("command stubs", () => {
-  // "help" is handled specially (not a stub), "init", "add", "log", "revert", "tag", "rework", "show", "status", and "plan" are implemented — exclude them
-  const STUB_COMMANDS = ALL_COMMANDS.filter((c) => c !== "help" && c !== "init" && c !== "add" && c !== "log" && c !== "revert" && c !== "verify" && c !== "tag" && c !== "rework" && c !== "show" && c !== "status" && c !== "plan");
+  // "help" is handled specially (not a stub); "init", "add", "deploy", "log", "revert", "verify", "tag", "rework", "show", "status", and "plan" are implemented — exclude them
+  const STUB_COMMANDS = ALL_COMMANDS.filter((c) => c !== "help" && c !== "init" && c !== "add" && c !== "deploy" && c !== "log" && c !== "revert" && c !== "verify" && c !== "tag" && c !== "rework" && c !== "show" && c !== "status" && c !== "plan");
 
   for (const cmd of STUB_COMMANDS) {
     test(`'${cmd}' prints not-yet-implemented and exits 1`, async () => {
@@ -328,25 +328,25 @@ describe("output module integration", () => {
   test("--quiet flag is accepted without error", async () => {
     // --quiet with a stub command should still exit 1 (stub) but not
     // crash due to flag parsing
-    const { stderr, exitCode } = await run("--quiet", "deploy");
+    const { stderr, exitCode } = await run("--quiet", "rebase");
     expect(exitCode).toBe(1);
     expect(stderr).toContain("not yet implemented");
   });
 
   test("--verbose flag is accepted without error", async () => {
-    const { stderr, exitCode } = await run("--verbose", "deploy");
+    const { stderr, exitCode } = await run("--verbose", "rebase");
     expect(exitCode).toBe(1);
     expect(stderr).toContain("not yet implemented");
   });
 
   test("--format json is accepted without error", async () => {
-    const { stderr, exitCode } = await run("--format", "json", "deploy");
+    const { stderr, exitCode } = await run("--format", "json", "rebase");
     expect(exitCode).toBe(1);
     expect(stderr).toContain("not yet implemented");
   });
 
   test("--format invalid value exits 1 with error", async () => {
-    const { stderr, exitCode } = await run("--format", "xml", "deploy");
+    const { stderr, exitCode } = await run("--format", "xml", "rebase");
     expect(exitCode).toBe(1);
     expect(stderr).toContain("invalid --format");
   });
@@ -361,29 +361,29 @@ describe("global option flags", () => {
     const { stderr, exitCode } = await run(
       "--db-uri",
       "postgresql://localhost/mydb",
-      "deploy",
+      "rebase",
     );
     expect(exitCode).toBe(1);
     expect(stderr).toContain("not yet implemented");
   });
 
   test("--plan-file is accepted", async () => {
-    const { exitCode } = await run("--plan-file", "my.plan", "deploy");
+    const { exitCode } = await run("--plan-file", "my.plan", "rebase");
     expect(exitCode).toBe(1);
   });
 
   test("--top-dir is accepted", async () => {
-    const { exitCode } = await run("--top-dir", "/some/path", "deploy");
+    const { exitCode } = await run("--top-dir", "/some/path", "rebase");
     expect(exitCode).toBe(1);
   });
 
   test("--registry is accepted", async () => {
-    const { exitCode } = await run("--registry", "_sqitch", "deploy");
+    const { exitCode } = await run("--registry", "_sqitch", "rebase");
     expect(exitCode).toBe(1);
   });
 
   test("--target is accepted", async () => {
-    const { exitCode } = await run("--target", "production", "deploy");
+    const { exitCode } = await run("--target", "production", "rebase");
     expect(exitCode).toBe(1);
   });
 });

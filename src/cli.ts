@@ -4,6 +4,7 @@
 import packageJson from "../package.json";
 import { runInit } from "./commands/init";
 import { runStatus } from "./commands/status";
+import { runDeploy } from "./commands/deploy";
 import { setConfig, type OutputFormat } from "./output";
 import { parseAddArgs, runAdd } from "./commands/add";
 import { runLogCommand } from "./commands/log";
@@ -304,6 +305,19 @@ export function main(argv: string[] = process.argv.slice(2)): void {
     addOpts.topDir = args.topDir;
     runAdd(addOpts).catch((err: unknown) => {
       process.stderr.write(`sqlever add: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    });
+    return;
+  }
+
+  if (args.command === "deploy") {
+    runDeploy(args).then((exitCode) => {
+      if (exitCode !== 0) {
+        process.exit(exitCode);
+      }
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`sqlever deploy: ${msg}\n`);
       process.exit(1);
     });
     return;
