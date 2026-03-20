@@ -99,6 +99,7 @@ In the agentic development era, engineers increasingly have AI assistants writin
 - Static analysis as a first-class citizen — dangerous patterns caught before deploy, not after
 - All advanced features are opt-in — v1.0 is safe to adopt without understanding expand/contract or batching
 - AI-native — structured output, machine-readable risk reports, CI integration
+- Composable — each major feature usable independently, without adopting the full tool. Teams using Flyway, Alembic, Rails migrations, or raw psql scripts should be able to run `stitch analyze` as a standalone linter in their CI pipeline without touching their migration runner. The batched DML worker should be invokable standalone. No forced adoption of the whole stack.
 
 ### Non-goals
 
