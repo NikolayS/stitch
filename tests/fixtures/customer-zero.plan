@@ -1,0 +1,260 @@
+%syntax-version=1.0.0
+%project=postgres_ai
+%uri=https://gitlab.com/postgres-ai/platform/
+
+20190726_init_api 2019-07-26T13:24:32Z Dmitry,Udalov,, <dmius@dev># Init Rest API
+20190726_subscribers 2019-07-26T13:36:26Z Dmitry,Udalov,, <dmius@dev># Subscribers api for site
+20190726_platform_db 2019-07-26T14:55:35Z Dmitry,Udalov,, <dmius@dev># Platform database
+20191008_joe_history 2019-10-08T00:15:31Z Anatoly Stansler <anatoly@postgres.ai> # Store Joe sessions history
+20191016_joe_history_improve 2019-10-16T16:00:44Z Anatoly Stansler <anatoly@postgres.ai> # Improve Joe history
+20191023_data_encryption 2019-09-12T13:21:26Z Dmitry Udalov <dmius@postgres.ai> # Improvement of password and token encyption
+20191024_user_multi_org 2019-10-24T10:20:08Z Dmitry Udalov <dmius@postgres.ai> # Support multi organizations for every user.
+20191031_joe_multy_org 2019-10-31T12:02:37Z Dmitry Udalov <dmius@postgres.ai> # Support multy organization for Joe methods
+20191031_joe_sessions_fix 2019-10-31T13:15:08Z Dmitry Udalov <dmius@postgres.ai> # Fix creation of joe sessions
+20191114_dblab 2019-11-14T09:54:15Z Dmitry Udalov  <dmius@postgres.ai># DB Lab tables and API calls
+20191203_dblab_improvements 2019-12-03T12:59:01Z Dmitry,Udalov,, <dmius@postgres.ai># Improvements of DB Lab API
+20191211_dblab_improvements_2 2019-12-11T13:40:33Z Dmitry Udalov <dmius@postgres.ai> # Improvements of Platform DB Lab API: update clone.
+20191224_dblab_improvements_3 2019-12-24T08:51:00Z Dmitry Udalov <dmius@dev1> # Platform DB Lab API improvements: update instance status, create clone.
+20200206_dblab_improvements_4 2020-02-06T14:43:43Z Dmitry Udalov <dmius@postgres.ai> # Support Database Lab API changes.
+20200218_userautojoin 2020-02-18T09:56:25Z Dmitry Udalov <dmius@postgres.ai> # Auto-join user to organization by email domain.
+20200304_jsons_download 2020-03-04T14:25:17Z Dmitry Udalov <dmius@postgres.ai> # Ability to download all report JSON files.
+20200313_joe 2020-03-13T14:57:04Z Dmitry Udalov <dmius@postgres.ai> # Support Joe bot.
+20200407_joe_improvements 2020-04-07T06:51:23Z Dmitry Udalov <dmius@postgres.ai> # Joe WebUI improvements.
+20200407_joe_link_command 2020-04-07T19:30:47Z Anatoly <anatoly@Anatolys-MacBook-Pro.local> # Add command history link to a response to Joe
+20200408_joe_history_user 2020-04-08T08:46:08Z Dmitry Udalov <dmius@postgres.ai> # Display user for WebUI joe sessions in history.
+20200408_joe_ws_fixes 2020-04-08T14:36:00Z Dmitry Udalov <dmius@postgres.ai> # Fix joe sessions history, escaping WebSockets chat id.
+20200414_personal_tokens 2020-04-14T18:49:43Z Dmitry Udalov <dmius@postgres.ai> # Add personal tokens.
+20200501_closed_beta 2020-05-01T13:25:36Z Anatoly <anatoly@postgres.ai> # Closed beta.
+20200505_billing 2020-05-05T08:37:43Z Dmitry Udalov <dmius@postgres.ai> # Billing.
+20200511_data_deletion 2020-05-11T07:25:47Z Dmitry Udalov <dmius@postgres.ai> # Add ability to delete some types of data.
+20200519_permissions 2020-05-19T19:20:38Z Dmitry Udalov <dmius@postgres.ai> # Add user roles and permissions
+20200608_use_tunnel_for_instances 2020-06-08T04:43:08Z akartasov <artyom@postgres.ai> # Use a tunnel for Joe and Database Lab instances.
+20200615_instance_management 2020-06-15T09:17:41Z akartasov <artyom@postgres.ai> # Fix management operations for Joe and Database Lab instances
+20200629_add_query_meta 2020-06-29T19:57:53Z Anatoly <anatoly@postgres.ai> # Add query meta requests.
+20200701_joe_history_improvements 2020-07-01T07:53:18Z Dmitry Udalov <dmius@postgres.ai> # Improvements of joe history.
+20200714_instances_tunnel_indication 2020-07-14T19:32:53Z Dmitry Udalov <dmius@postgres.ai> # Indication usage of the tunnel for instances.
+20200716_share_url 2020-07-16T19:42:10Z Dmitry Udalov <dmius@postgres.ai> # Possibility to share URL.
+20200811_improve_onboarding 2020-08-11T19:44:41Z Dmitry Udalov <dmius@postgres.ai> # Improve onboarding new user.
+20200813_platform_settings 2020-08-13T20:09:32Z Dmitry Udalov <dmius@postgres.ai> # Platform settings table and function.
+20200813_platform_settings_fix 2020-08-13T21:47:30Z Dmitry Udalov <dmius@postgres.ai> # Platform settings fix.
+20200813_hourly_billing 2020-08-13T22:00:00Z Dmitry Udalov <dmius@postgres.ai> # Hourly billing.
+20200827_fix_platform_settings 2020-08-27T09:56:07Z Anatoly <anatoly@Anatolys-MacBook-Pro.local> # Fix usage of current and platform settings.
+20200828_billing_logging 2020-08-28T07:28:58Z Dmitry Udalov <dmius@postgres.ai> # Debug loggin in billing functions.
+20200904_data_usage_processing_fix 2020-09-03T22:02:40Z Dmitry Udalov <dmius@postgres.ai> # Fix processing of data usage for hourly billing.
+20200907_billing_impovements 2020-09-07T05:57:40Z Dmitry Udalov <dmius@postgres.ai> # Logging imrovements, some fixes.\nPlease enter a note for your change. Lines starting with '#' will
+20200911_billing_improvements_2 2020-09-11T15:50:39Z Dmitry Udalov <dmius@postgres.ai> # Billing improvements part 2.
+20200917_billing_data_usage_fix 2020-09-17T09:25:18Z Dmitry Udalov <dmius@postgres.ai> # Fix billing_data_usage view.
+20200922_billing_summary_improvements 2020-09-22T20:02:43Z Dmitry Udalov <dmius@postgres.ai> # Billing summary improvements.
+20200924_permissions_improvements 2020-09-24T19:45:15Z Dmitry Udalov <dmius@postgres.ai> # Permissions improvements.
+20201005_demouser 2020-10-05T13:39:41Z Dmitry Udalov <dmius@postgres.ai> # Adjust demo user permissions.
+20201005_users_management 2020-10-05T20:16:45Z Dmitry Udalov <dmius@postgres.ai> # Users management.
+20201006_migration_check 2020-10-06T20:22:19Z Dmitry Udalov <dmius@postgres.ai> # Support automatic checks of DB migrations.
+20201020_users_management_fix 2020-10-19T21:07:48Z Dmitry Udalov <dmius@postgres.ai> # Fix users management.
+20201102_migration_check_fix 2020-11-02T19:48:13Z Dmitry Udalov <dmius@postgres.ai> # Fix issues in observed sessions API.
+20201103_drop_dblab_session_index 2020-10-26T10:30:08Z akartasov <artyom@postgres.ai> # Drop a unique DBLab session index.
+20201110_pgaudit_apply 2020-11-10T11:22:58Z Ubuntu <ubuntu@ip-172-31-46-133> # PgAudit apply for postgres.ai database
+20201111_audit_log 2020-11-11T20:25:30Z Dmitry Udalov <dmius@postgres.ai> # Add audit log.
+20201118_users_orgs_trigger_fix 2020-11-18T20:21:48Z Dmitry Udalov <dmius@postgres.ai> # Fix users_orgs trigger.
+20201127_shrared_urls_fix 2020-11-27T06:02:13Z Dmitry Udalov <dmius@postgres.ai> # Fix deletion of shared urls.
+20201130_activate_user 2020-11-30T21:13:19Z Dmitry Udalov <dmius@postgres.ai> # Activate user on assign to organization.
+20201130_dblab_session_improvements 2020-11-28T22:12:18Z Dmitry Udalov <dmius@postgres.ai> # Improvements of DBLab sessions.
+20201203_default_user_role 2020-12-03T20:12:49Z Dmitry Udalov <dmius@postgres.ai> # Define default user role in settings.
+20201208_log_downloading_fix 2020-12-07T21:06:49Z Dmitry Udalov <dmius@postgres.ai> # Fix downloading of observed session log.
+20201208_history_username_fix 2020-12-08T12:00:27Z Dmitry Udalov <dmius@postgres.ai> # Add user name to history view.
+20201209_log_records_order_fix 2020-12-08T21:32:16Z Dmitry Udalov <dmius@postgres.ai> # Fix order records in log.
+20201214_pgaudit_config_change 2020-12-14T14:29:17Z Ubuntu <ubuntu@ip-172-31-46-133> # Add function and do blocks audit
+20210112_tokens_access 2021-01-12T20:13:06Z Dmitry Udalov <dmius@postgres.ai> # Impersonal tokens access.
+20210127_onboarding 2021-01-27T20:44:16Z Dmitry Udalov <dmius@postgres.ai> # User onboarding support.
+20210210_autojoin_fix 2021-02-09T21:31:55Z Dmitry Udalov <dmius@postgres.ai> # Fix autojoin new users.
+20200215_register_user_fix 2021-02-15T16:04:19Z Dmitry Udalov <dmius@postgres.ai> # Fix user registration process.
+20210216_change_urls 2021-02-16T15:26:26Z Anatoly <anatoly@postgres.ai> # Change URLs in onboarding.
+20210219_security_fixes 2021-02-19T19:08:59Z Dmitry Udalov <dmius@postgres.ai> # Fix security issues.
+20210222_security_fix_3 2021-02-22T19:43:53Z Dmitry Udalov <dmius@postgres.ai> # Fix security issues 3.
+20210222_security_fix_2 2021-02-23T14:21:51Z Dmitry Udalov <dmius@postgres.ai> # Fix security issues 2.
+20210225_security_fix_4 2021-02-25T08:57:14Z Dmitry Udalov <dmius@postgres.ai> # Fix security issues 4.
+20210309_invitations_rework 2021-03-09T20:43:55Z Dmitry Udalov <dmius@postgres.ai> # Rework user invitations.
+20210313_join_demo_handle 2021-03-13T12:19:03Z Anatoly <anatoly@postgres.ai> # Add join demo org API handle.
+20210526_tos_confirmation 2021-05-26T11:45:49Z Dmitry Udalov <dmius@postgres.ai> # TOS agreement confirmation.
+20210531_session_artifacts 2021-05-31T19:27:26Z Dmitry Udalov <dmius@postgres.ai> # Processing and storage for session artifacts.
+20210723_fix_user_postprocessing 2021-07-23T17:43:36Z Anatoly <anatoly@postgres.ai> # Fix user_postprocessing: fix typo in welcome email title and remove airtable integration.
+20210826_reset_clone_options 2021-08-26T06:58:22Z akartasov <artyom@postgres.ai> # Add options to reset clone to specific snapshot.
+20211111_postgres_universe 2021-11-11T16:56:05Z NikolayS <nik@postgres.ai> # Initial schema for Postgres Universe
+20211014_update_instance_status_api 2021-10-14T04:49:23Z akartasov <artyom@postgres.ai> # Update the instance data collection
+20211019_telemetry_events 2021-10-19T09:22:27Z akartasov <artyom@postgres.ai> # Store telemetry events
+20221109_orgs_categorize 2022-11-10T07:24:37Z Nikolay <nik@postgres.ai> # Categorize orgs: which cloud, managed or not
+20230210_api_tokens_adjust 2023-02-10T21:14:37Z gitpod <gitpod@postgresai-platform-6a7cw6fa5en> # Add UK for token names; make Administrative tokens visible to all admins in org
+20230221_oauth_disallow_some_methods 2023-02-21T22:27:37Z gitpod <gitpod@postgresai-platform-2lwhicxda0l> # For certain orgs, allow admins to disallow some oauth methods - e.g., LinkedIn – for better security
+20230225_dle_se_cloud_setup 2023-02-26T04:35:53Z gitpod <gitpod@postgresai-platform-ggwtei3h138> # Dictionaries for cloud setup of DLE SE
+20230302_orgs_oauth_methods__project_label 2023-03-03T06:57:09Z gitpod <gitpod@postgresai-platform-tgwtbklqh7u> # Add: label to "projects"; oauth methods control to orgs
+20230304_dblab_instance_edit 2023-03-05T06:08:05Z gitpod <gitpod@postgresai-platform-w0torzdo1dj> # API function dblab_instance_edit
+20230307_dle_se_cloud_volumes 2023-03-08T05:24:41Z gitpod <gitpod@postgresai-platform-3bc5ufvut7s> # Add cloud_volumes – cloud volume dictionary for DLE SE
+20230320_joe_instances_with_project_label 2023-03-20T19:02:01Z gitpod <gitpod@postgresai-platform-uaj1gtvjnr3> # Add missing project label to Joe instance list
+20230410_org_key__and__dblab_instance_register 2023-04-10T17:39:55Z gitpod <gitpod@postgresai-platform-48pa2vmht5t> # Implement org_key and rpc/dblab_instance_register to auto-register new DLE SE instances
+20230410_stripe_payment_methods 2023-04-10T18:28:05Z gitpod <gitpod@postgresai-platform-wu5xcx4wic7> # Add Platform API endpoints to manage Stripe payment methods
+20230428_cloud_dictionary_fixes 2023-04-28T16:30:59Z gitpod <gitpod@postgresai-platform-his2e88pt27> # A few fixes to cloud dictionaries
+20230509_dblab_se_async_stripe_usage 2023-05-10T03:51:15Z gitpod <gitpod@postgresai-platform-shz470irtk7> # Async usage reporting to Stripe for DBLab SE
+20230608_gitlab_api_and_se_images_list 2023-06-08T18:02:10Z gitpod <gitpod@postgresai-platform-slqkdjgt4dq> # GitLab API integration; Show the list of SE images
+20230720_extend_dblab_se_images 2023-07-20T18:43:52Z gitpod <gitpod@postgresai-platform-18qz315l2ev> # Extend v1.dblab_se_images() – add preset logic
+20230803_sendgrid 2023-08-03T23:58:44Z gitpod <gitpod@postgresai-platform-9j1sk1i8aaw> # Use Sendgrid API to send emails
+20230804_query_locks_in_joe_history 2023-08-04T09:04:42Z akartasov <artyom@postgres.ai> # Show locks for a single query analyzed with EXPLAIN stored in Joe History
+20230807_joe_history_view 2023-08-07T07:54:39Z akartasov <artyom@postgres.ai> # Update joe history view
+20230815_replace_telemetry_event 2023-08-15T10:39:15Z akartasov <artyom@postgres.ai> # Deploy the telemetry_event function
+20231019_cloud_providers_access 2023-10-19T04:11:44Z akartasov <artyom@postgres.ai> # Allow access to the cloud_providers view
+20231026_chats 2023-10-26T17:09:55Z gitpod <gitpod@postgresai-platform-yeecyrgkg4u> # Implement Chats
+20231115_bot_kb 2023-11-15T22:03:03Z gitpod <gitpod@postgresai-platform-64n3406ciyx> # Postgres.ai knowledge base – GPT4 embeddings
+20231204_bot_leads 2023-12-05T00:03:09Z gitpod <gitpod@postgresai-platform-uj5w64zzese> # Collect leads for PostgresAI bot testing
+20240110_chats_whole_thread 2024-01-11T06:45:01Z gitpod <gitpod@postgresai-platform-1v2q7bko9h5> # Allow viewing the whole thread for a specific chats message, with all ancestors and descendants
+20240111_experiments_and_artifacts 2024-01-11T20:01:04Z gitpod <gitpod@postgresai-platform-h18q0fdpqbt> # For AI bot, support experiments and artifacts in API
+20240304_bot_documents_extras_and_category_and_url_main 2024-03-04T23:31:43Z gitpod <gitpod@postgresai-platform-9e8vdtav7v4> # Extend bot.documents: extras (jsonb), url_main, and category
+20240415_chats_thread_id_and_model 2024-04-15T18:24:21Z gitpod <gitpod@postgresai-platform-7qxv4xtzuhv> # chats.ai_model and chats.thread_id
+20240423_chats_security 2024-04-24T00:45:43Z gitpod <gitpod@postgresai-platform-giqyzsbqrfy> # Add security model and tests for chats (JWT, user_id, org_id checks)
+20240522_chat_debug_messages 2024-05-24T02:34:47Z gitpod <gitpod@postgresai-platform-j92ziz2e9r5> # Bot runs – all the details on each communication with bot
+20240604_bot_llm_models 2024-06-04T05:39:46Z gitpod <gitpod@postgresai-platform-j92ziz2e9r5> # List of available llm models for chat bot
+20240703_bot_security_fixes 2024-07-03T15:41:59Z gitpod <gitpod@postgresai-platform-0h05onst900> # Allow writes to the chats system without "super key"
+20240722_rag_2_0_search_function 2024-07-22T17:29:49Z gitpod <gitpod@postgresai-platform-fazg94jvyor> # New function for RAG search - old one, but with category split
+20240716_add_fields_from_chats_to_chats_auth_view 2024-07-16T06:21:41Z gitpod <gitpod@postgresai-platform-2favio2d1da> # Make fields of view chats_auth identical to chats
+20240723_demo_org_autojoin 2024-07-23T06:23:57Z gitpod <gitpod@postgresai-platform-psvu3ajfrxy> # New users are automatically added to the demo organization
+20240820_adjust_hnsw_ef_search 2024-08-21T03:44:53Z gitpod <gitpod@postgresai-platform-mzjcdfhwx1w> # Set hnsw.ef_search to 100 (default is 40)
+20240821_chats_ancestors_and_descendants_private_messages_access 2024-08-21T02:13:15Z gitpod <gitpod@postgresai-platform-x0fqi44i3k0> # fix: chats_ancestors_and_descendants access to private messages
+20241017_bot_links_visited_at 2024-10-17T12:01:43Z gitpod <gitpod@postgresai-platform-tedef3pv8ho> # Add visited_at column to bot.links to store visited date time
+20241024_bot_parsing 2024-10-24T11:50:45Z gitpod <gitpod@postgresai-platform-778f0is1bv8> # Move bot parsing queries to API
+20241120_allow_anon_access_to_debug_for_public_chats 2024-11-20T21:30:18Z gitpod <gitpod@postgresai-platform-snnz2nkfyno> # Allow anonymous access to debug info of public chats
+20241002_orgs_default_chat_privacy 2024-10-02T12:32:12Z gitpod <gitpod@postgresai-platform-yfac8syvoj1> # Add is_chat_private_by_default column to orgs table to define default chat privacy setting for organizations, and set it to false for demo org (ID 34)
+20241122_private_messages_fixes 2024-11-22T13:22:47Z System Administrator <root@MacBook-Pro-Bogdan.local> # AI Assistant private messages fixes
+20241119_ai_kb_stats 2024-11-19T04:52:50Z System Administrator <root@MacBook-Pro-Bogdan.local> # AI Assistant KB statistics
+20241120_kb_slack_notifications 2024-11-20T10:49:34Z System Administrator <root@MacBook-Pro-Bogdan.local> # KB events slack notifications
+20241204_stripe_billing_fix 2024-12-04T18:16:10Z Bogdan Tsechoev <bogdan@postgres.ai> # Fixed stripe billing function
+20241204_stripe_billing_fix_add_event_time 2024-12-04T19:04:30Z Bogdan Tsechoev <bogdan@postgres.ai> # Fixed stripe billing function
+20241205_kb_notifications_update 2024-12-05T07:09:43Z Bogdan Tsechoev <bogdan@postgres.ai> # Make Slack notifications more compact
+20241128_extend_chats_private_messages_access_conditions 2024-11-28T06:29:30Z Bogdan Tsechoev <bogdan@postgres.ai> # Extend chats private messages access conditions
+20240806_llm_models_comment 2024-08-06T04:24:34Z gitpod <gitpod@postgresai-platform-zsd8a5dj80a> # Add comment column to bot.llm_models table
+20241219_fix_uuid_function_namespace 2024-12-19T03:22:03Z Bogdan Tsechoev <bogdan@postgres.ai> # Namespace public added to uuid_v7 hepler functions
+20241212_llm_models_access 2024-12-12T09:05:15Z Bogdan Tsechoev <bogdan@postgres.ai> # Added function for safe access to bot.llm_models
+20241213_siem_audit_integration 2024-12-13T09:15:08Z Bogdan Tsechoev <bogdan@postgres.ai> # Integration with SIEM services for audit logs
+20250108_chats_email_notifications 2025-01-08T13:19:15Z Bogdan Tsechoev <bogdan@postgres.ai> # Email notifications for important chats messages
+20250116_consulting 2025-01-16T13:00:48Z Bogdan Tsechoev <bogdan@postgres.ai> # Consulting billing system
+20250130_consulting_mail_notifications 2025-01-30T07:25:08Z Bogdan Tsechoev <bogdan@postgres.ai> # Consulting balance mailing notifications
+20250131_consulting_automatization 2025-01-31T09:53:08Z Bogdan Tsechoev <bogdan@postgres.ai> # Consulting automatization
+20250204_update_joe_bot_user_id 2025-02-04T13:47:10Z Bogdan Tsechoev <bogdan@postgres.ai> # Use email as user id in joe bot
+20250106_dblab_clone_api_combined_function 2025-01-06T10:49:29Z Bogdan Tsechoev <bogdan@postgres.ai> # Combine functions for calling the dblab clone API into a single one
+20250205_consulting_org_balance_formatting 2025-03-05T07:31:02Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix  balance formatting in org_balance view
+20250314_dblab_email_notifications 2025-03-14T09:59:31Z Bogdan Tsechoev <bogdan@postgres.ai> # DBLab email notifications
+20250515_issue_tracker 2025-05-15T15:01:12Z Bogdan Tsechoev <bogdan@postgres.ai> # Issue tracker
+20250606_consulting_transaction_create_fix 2025-06-06T11:29:23Z Bogdan Tsechoev <bogdan@postgres.ai> # fix consulting_transaction_create api function
+20250627_stripe_subscription_cancellation_graceful_handling 2025-06-27T12:26:51Z Bogdan Tsechoev <bogdan@postgres.ai> # Handle canceled Stripe subscriptions gracefully without breaking billing pipeline
+20250508_dblab_instance_create_add_project_label 2025-05-08T08:55:14Z Bogdan Tsechoev <bogdan@postgres.ai> # Add project_label to dblab_instance_create API endpoint function
+20250704_pgaudit_log_volume_fix 2025-07-04T16:00:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix pgaudit configuration to eliminate log volume explosion
+20250715_checkup_2_0_api 2025-07-15T08:28:00Z Bogdan Tsechoev <bogdan@postgres.ai> # API endpoint for new checkup reports
+20250715_session_manual_command_support 2025-07-15T11:19:54Z gitpod <gitpod@postgresai-platform-4vk1gocefo6> # Make joe_session_id nullable to allow for the manual command support
+20250723_joe_session_command_post_fix 2025-07-23T08:56:25Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix project_name null value
+20250716_checkup_subscription_billing 2025-07-16T08:25:16Z Bogdan Tsechoev <bogdan@postgres.ai> # Checkup subscription billing
+20250725_blog_feedback_form 2025-07-25T10:39:23Z Bogdan Tsechoev <bogdan@postgres.ai> # API for blog form
+20250704_consulting_transaction_create_add_date 2025-07-04T08:51:27Z Bogdan Tsechoev <bogdan@postgres.ai> # Add transaction date to consulting_transaction_create API
+20250429_dblab_api_reply_error_parsing 2025-04-29T10:07:18Z Bogdan Tsechoev <bogdan@postgres.ai> # Add error message check
+20250819_checkup_update_fix 2025-08-19T10:50:14Z Bogdan Tsechoev <bogdan@postgres.ai> # fix: checkup update API function
+20250903_pgmustard 2025-09-04T02:05:56Z gitpod <gitpod@postgresai-platform-gvp3swos8j6> # pgmustard integration
+20250925_toggle_org_ai 2025-09-25T21:14:58Z gitpod <gitpod@postgresai-platform-rbdg2t27z6f> # Add ai_enabled column to org
+20251013_toggle_ai_models 2025-10-14T01:04:36Z   <sqitch@01157dfe3b0b> # Add ability to toggle specific AI models in orgs
+20251019_filter_ai_models 2025-10-20T02:21:55Z sqitch <sqitch@4b3c7096884b> # Filter AI models based on org settings in API and trigger
+20251028_siem_multi_endpoints 2025-10-28T07:41:55Z Bogdan Tsechoev <bogdan@postgres.ai> # Allow sending audit logs to multiple SIEM endpoints
+20251030_api_token_org_id 2025-10-30T00:00:00Z System Administrator <root@localhost> # Helper function to get org_id from api_token_check
+20251030_issues_api_access 2025-10-30T00:01:00Z System Administrator <root@localhost> # Issues API: update view to use api_token_org_id
+20251104_issue_comments_api_access 2025-11-04T00:00:00Z System Administrator <root@localhost> # Issue comments API: allow API tokens and anon grant
+20251020_monitoring_api 2025-10-20T07:31:08Z Bogdan Tsechoev <bogdan@postgres.ai> # API for installing monitoring
+20251106_monitoring_install_fix 2025-11-06T15:50:24Z Bogdan Tsechoev <bogdan@postgres.ai> # fix: monitoring install image setting
+20251029_cli_oauth_auth 2025-10-29T12:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Generic OAuth authentication for CLI, Grafana, and other clients
+20251110_fix_bot_llm_models_function 2025-11-10T06:03:27Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix bot llm models orgs table call
+20251118_monitoring_fix_ip_release 2025-11-18T08:40:41Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix floating ip release after aws instance destroy
+20251110_checkup_reports_markdown_generator 2025-11-10T13:36:16Z Bogdan Tsechoev <bogdan@postgres.ai> # Checkup reports markdown generation
+20251111_notify_issues_slack 2025-11-11T23:39:08Z   <sqitch@b2a89abbcf5f> # Sending slack notifications when issues are created
+20251121_hotfix_oauth_api_ambiguous_column_ref 2025-11-21T13:04:27Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix ambiguouscolumn reference in slack ouath API endpoints
+20251125_multi_db_reports 2025-11-25T08:49:25Z Bogdan Tsechoev <bogdan@postgres.ai> # Create different markdown file for every logical db in report if any
+20251114_prepare_monitoring_db 2025-11-14T10:48:15Z Bogdan Tsechoev <bogdan@postgres.ai> # Prepare monitoring DB ansible flag
+20251125_issue_action_items 2025-11-25T13:35:09Z Bogdan Tsechoev <bogdan@postgres.ai> # Add action items for issues
+20251129_report_type_selector 2025-11-29T00:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Add report_type parameter to markdown generation for cross-report support
+20251127_grafana_oauth 2025-11-27T07:12:04Z Bogdan Tsechoev <bogdan@postgres.ai> # Add OAuth endpoints for grafana
+20251201_pass_secrets_to_monitoring_ansible 2025-12-01T08:52:49Z Bogdan Tsechoev <bogdan@postgres.ai> # Pass cloud secrets to monitoring ansible
+20251129_action_items_sort 2025-11-28T11:20:59Z Bogdan Tsechoev <bogdan@postgres.ai> # Sort action items on insert
+20251125_issue_email_notifications 2025-11-26T02:13:58Z   <sqitch@52b0cd4922c7> # Add email notifications for issues
+20251201_drop_checkup_report_markdown_regenerate_bigint 2025-12-01T12:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Drop unused function signature v1.checkup_report_markdown_regenerate(bigint)
+20251203_grafana_oauth_orginfo_api 2025-12-03T13:14:27Z Bogdan Tsechoev <bogdan@postgres.ai> # Adds clientid -> org name API for grafana oauth
+20251130_default_role 2025-12-01T03:41:05Z   <sqitch@696405a2ec53> # Add default role setting to orgs
+20251205_postgres_ai_mcp_fixes 2025-12-05T08:21:16Z Bogdan Tsechoev <bogdan@postgres.ai> # Fixes and updates for postgres_ai cli mcp
+20251209_default_landing_page 2025-12-09T11:37:51Z Bogdan Tsechoev <bogdan@postgres.ai> # Add default_landing_page row to orgs and api
+20251209_stripe_webhoop_billing_fixes 2025-12-09T09:02:33Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix errors in stripe billing webhook
+20251210_fix_checkup_report_file_post_check_id_extraction 2025-12-10T15:28:24Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix check_id extraction from prefixed filenames in checkup_report_file_post
+20251211_fix_user_get_default_role 2025-12-11T13:32:12Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix user get default role
+20251204_email_notifications_default_on 2025-12-04T23:21:39Z   <sqitch@42a49ce871be> # Change the email notifications to on by default
+20251216_restrict_monitoring_to_org_admins 2025-12-16T12:57:57Z Bogdan Tsechoev <bogdan@postgres.ai> # Restrict monitoring instance operations only to admins
+20251202_byom_and_byoc_monitoring_setup 2025-12-02T08:57:34Z Bogdan Tsechoev <bogdan@postgres.ai> # Adds support of byoc and byom monitoring setup
+20251215_issue_comment_notifications 2025-12-16T02:13:19Z   <sqitch@398a2085eb28> # Comment notifications for issues
+20251225_fix_slack_notifications 2025-12-25T10:04:23Z   <sqitch@7301097bd54c> # Fix slack notifications
+20251225_express_checkup 2025-12-25T10:21:39Z Bogdan Tsechoev <bogdan@postgres.ai> # Add express checkup billing
+20251230_checkup_report_create_postgrest_overload 2025-12-30T00:00:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Add PostgREST overload for checkup_report_create
+20251226_autojoin_orgs 2025-12-26T19:16:44Z   <sqitch@ea9cb31afab2> # Autojoin organizations invited to upon creating an account
+20251229_credential_encryption_service 2025-12-29T10:11:49Z Bogdan Tsechoev <bogdan@postgres.ai> # Using credential encryption service
+20251230_subscription_upgrade 2025-12-30T04:13:20Z Bogdan Tsechoev <bogdan@postgres.ai> # Add subscription upgrade feature
+20251230_fix_subscription_upgrade 2025-12-30T07:51:59Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix for update
+20251230_monitoring_persist_provision_in_state 2025-12-30T12:00:00Z Denis <denis@postgres.ai> # Persist monitoring provision into state for reliable deletion
+20251231_fix_org_ssh_key_delete_param_ambiguity 2025-12-31T00:00:00Z Denis <denis@postgres.ai> # Fix org_ssh_key_delete parameter ambiguity
+20251231_checkup_report_titles 2025-12-31T12:00:00Z Claude <claude@postgres.ai> # Add checkup report titles table and API
+20260105_add_software_plan_to_sub_desc 2026-01-05T11:53:21Z Bogdan Tsechoev <bogdan@postgres.ai> # Add software plan to subscription description
+20260106_action_items_statuses 2026-01-06T12:22:26Z Bogdan Tsechoev <bogdan@postgres.ai> # Adds statuses for action items
+20260107_action_items_statuses_fix 2026-01-07T14:09:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix action items statuses - allow setting waiting_for_approval
+20260108_express_checkup_prepare_db 2026-01-08T17:43:24Z Bogdan Tsechoev <bogdan@postgres.ai> # Add prepare db feature to express checkup
+20260107_action_items_sql_actions_and_api 2026-01-07T14:42:32Z Bogdan Tsechoev <bogdan@postgres.ai> # Add API and SQL action to action items
+20260112_hobby_plan_markdown_preview_mode 2026-01-12T10:29:22Z Bogdan Tsechoev <bogdan@postgres.ai> # Add markdown preview mode paywall for hobby plan
+20260109_supabase_integration 2026-01-09T12:00:00Z Claude <claude@postgres.ai> # Add Supabase OAuth integration for monitoring
+20260112_express_checkup_async_setup 2026-01-12T00:00:00Z Claude <claude@postgres.ai> # Add async setup for express checkup connections
+20260113_regenerate_markdown_after_plan_upgrade 2026-01-13T08:32:18Z Bogdan Tsechoev <bogdan@postgres.ai> # Regenerate markdown (issues/reports) after plan upgrade from hobby to express
+20260113_expres_checkup_upgrade_multiple_instances 2026-01-13T18:12:41Z Bogdan Tsechoev <bogdan@postgres.ai> # Upgrade multiple hobby level express checkup instances
+20260113_supabase_sync_auto_create_checkup 2026-01-13T12:00:00Z Claude <claude@postgres.ai> # Auto-create hobby express checkup connections on Supabase project sync
+20260113_supabase_encrypted_tokens 2026-01-13T18:00:00Z Claude <claude@postgres.ai> # Add encrypted refresh token columns for Supabase connections
+20260114_disable_supabase_project 2026-01-14T10:48:11Z Bogdan Tsechoev <bogdan@postgres.ai> # Disable supabase project
+20260115_express_checkup_token_cleanup 2026-01-15T12:00:00Z Claude <claude@postgres.ai> # Clean up orphaned API tokens when express checkup connections are deleted
+20260116_fix_express_checkup_run_starvation 2026-01-16T12:00:00Z Claude <claude@postgres.ai> # Fix failing connections starving other connections in checkup queue
+
+20250115_update_stripe_express_subscription 2026-01-15T08:05:29Z Bogdan Tsechoev <bogdan@postgres.ai> # Update express subscription count with stripe
+20260115_umami_signup_tracking 2026-01-15T05:07:40Z root <root@930e6add2688> # Add Umami signup event tracking in user_postprocessing trigger
+20260116_get_supabase_access_token_upstream_errors 2026-01-16T14:29:08Z Claude <claude@postgres.ai> # Add upstream error details to get_supabase_access_token
+20260116_fix_express_checkup_setup_attempts 2026-01-16T14:31:19Z Claude <claude@postgres.ai> # Fix setup_attempts increment in exception handler
+20260116_skip_issue_duplicates 2026-01-16T08:31:53Z Bogdan Tsechoev <bogdan@postgres.ai> # Skip issue duplicates
+20260116_supabase_connection_limit_per_org 2026-01-16T16:18:42Z Bogdan Tsechoev <bogdan@postgres.ai> # Limit one Supabase connection per organization
+20260116_user_analytics_signup_payload 2026-01-16T18:00:00Z Cursor <cursor@postgres.ai> # Store Umami signup payload in user_analytics
+20260113_get_org_invitations 2026-01-13T03:08:43Z Claude <claude@postgres.ai> # Add API to fetch pending organization invitations
+20260119_fix_http_request_migration 2026-01-19T11:37:49Z Bogdan Tsechoev <bogdan@postgres.ai> # Add http request to migration
+20260119_checkup_report_respect_has_issues_flag 2026-01-19T15:32:26Z Bogdan Tsechoev <bogdan@postgres.ai> # Respect has_issues flag from checkup-reporter API when creating issues
+20260116_invitation_role_support 2026-01-17T00:49:25Z root <root@7b93ec596eb4> # Add role_id to invitations, update get_org_invitations, add cancel/resend functions
+20260120_express_checkup_deletion_and_downgrade 2026-01-20T12:00:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Add functions to delete express checkup connections and cancel subscriptions
+20260120_checkup_report_json_to_markdown_api 2026-01-20T00:00:00Z Claude <claude@postgres.ai> # Add API wrapper for checkup_report_markdown_generate function
+20260123_monitoring_org_level_billing 2026-01-23T12:00:00Z Claude <claude@postgres.ai> # Add org-level billing support for startup/scale monitoring plans
+20260127_disable_demo_org_autojoin 2026-01-27T21:26:39Z Maya <maya@postgres.ai> # Disable auto-join to Demo org - Demo was for DBLab not monitoring
+20260123_landing_page_variants 2026-01-23T18:26:43Z Claude <claude@postgres.ai> # Add landing page variants table, upsert function, and API view
+20260127_supabase_monitoring_provision 2026-01-27T10:26:29Z Bogdan Tsechoev <bogdan@postgres.ai> # Provision supabase monitoring
+20260130_supabase_oauth_redirect_to_issues 2026-01-30T12:00:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Change default redirect after Supabase OAuth to issues page
+20260130_supabase_checkup_enabled_immediately 2026-01-30T19:00:00Z Claude <claude@postgres.ai> # Set checkup_enabled=true immediately when express_checkup_connection is created
+20260130_supabase_token_race_condition 2026-01-30T14:30:27Z Bogdan Tsechoev <bogdan@postgres.ai> # Fix Supabase token race condition and add supabase_mode for provisioning
+20260122_admin_metrics 2026-01-22T00:00:00Z Claude <claude@postgres.ai> # Admin dashboard metrics endpoint for staff-only access
+20260203_non_personal_checkup_tokens 2026-02-03T12:00:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Use non-personal tokens for checkup, issues created by PostgresAI
+20260203_current_state_idle_to_ready 2026-02-03T12:00:00Z Claude <claude@postgres.ai> # Change current_state from idle to ready/waiting_for_checkup
+20260205_monitoring_cli_registration 2026-02-04T10:44:57Z Bogdan Tsechoev <bogdan@postgres.ai> # CLI monitoring registration API
+20260206_checkup_reports_api_token_access 2026-02-06T12:00:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Allow checkup_reports and checkup_report_files access via API token
+20260206_add_labels_table 2026-02-06T13:00:00Z Claude <claude@postgres.ai> # Add labels table for issue categorization
+20260212_fix_audit_process_and_expose_subscription_type 2026-02-12T12:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Fix audit_process trigger crash on empty JWT and expose checkup_subscription_type in user_get
+20260212_get_issue_labels_security_definer 2026-02-12T12:00:00Z Claude <claude@postgres.ai> # Fix 403 on issues list: add security definer to get_issue_labels()
+20260127_unify_email_provider 2026-01-27T00:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Use SendGrid instead of Mailgun for user registration emails
+20260214_postgrest_v9_compat 2026-02-14T12:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # PostgREST v9 compat: header bridging, get_request_header() helper, OUT param to RETURNS conversion
+20260217_drop_consulting_trigger_and_bot_documents_schema 2026-02-17T12:00:00Z Denis <denis@postgres.ai> # Drop consulting trigger removed in prod
+20260220_admin_metrics_fix_auth 2026-02-20T00:00:00Z Denis <denis@postgres.ai> # Fix admin_metrics auth: use user ID lookup instead of missing JWT email claim, add api_access_check
+20260220_org_announcements 2026-02-20T12:00:00Z Denis <denis@postgres.ai> # Add announcement column to orgs for org-wide banners
+20260211_billing_enforcement 2026-02-11T00:00:00Z Bogdan Tsechoev <bogdan@postgres.ai> # Billing enforcement: block checkup/monitoring on payment failure with grace period
+20260227_fix_monitoring_instance_create_missing_return 2026-02-27T12:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Fix missing RETURN in monitoring_instance_create for managed/byoc path
+20260227_fix_express_checkup_subscription_cancel_missing_return 2026-02-27T13:00:00Z Denis <denis@postgres.ai> # Fix missing return in express_checkup_subscription_cancel
+20260227_db_connectivity_test_error_detail 2026-02-27T06:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Use PG_EXCEPTION_DETAIL with SQLERRM fallback for richer connection error messages
+20260302_fix_system_issue_null_author_id 2026-03-02T19:00:00Z Maya <maya@postgres.ai> # Fix NOT FOUND guard and permission check for null-author system issues
+20260301_billing_enforcement_retroactive_grace 2026-03-01T05:20:00Z Maya <maya@postgres.ai> # Backfill 7-day grace period for orgs retroactively broken by billing_enforcement migration
+20260309_bridge_grafana_jwt_claims 2026-03-09T15:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Bridge aud, sub, org_id JWT claims in platform_pre_request for Grafana OAuth
+20260301_fix_telemetry_usage_orphaned_subscription 2026-03-01T00:00:00Z Maya P <maya@postgres.ai> # Fix #76: handle orphaned Stripe subscriptions, improve error codes
+20260310_stripe_event_preserve_audit_log 2026-03-10T12:00:00Z Nikolay Samokhvalov <nik@postgres.ai> # Preserve stripe event audit log on webhook processing failure
+20260310_update_hetzner_deprecated_plans 2026-03-10T19:00:00Z Denis <denis@postgres.ai> # Update deprecated Hetzner CCX11/12 series to current CCX13 series
+20260311_fix_telemetry_usage_billing_cycle_anchor_cast 2026-03-11T19:00:00Z Denis <denis@postgres.ai> # Fix billing_cycle_anchor: cast epoch to int for Stripe API compatibility
