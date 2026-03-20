@@ -9,6 +9,7 @@ import { runLogCommand } from "./commands/log";
 import { runRevert } from "./commands/revert";
 import { parseTagArgs, runTag } from "./commands/tag";
 import { parseReworkArgs, runRework } from "./commands/rework";
+import { parseShowArgs, runShow } from "./commands/show";
 
 // ---------------------------------------------------------------------------
 // Command registry — all commands from SPEC R1 plus sqlever extensions
@@ -339,6 +340,20 @@ export function main(argv: string[] = process.argv.slice(2)): void {
       process.stderr.write(`sqlever rework: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exit(1);
     });
+    return;
+  }
+
+  if (args.command === "show") {
+    const showOpts = parseShowArgs(args.rest);
+    if (args.topDir !== undefined) showOpts.topDir = args.topDir;
+    if (args.planFile !== undefined) showOpts.planFile = args.planFile;
+    try {
+      runShow(showOpts);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`sqlever show: ${msg}\n`);
+      process.exit(1);
+    }
     return;
   }
 
