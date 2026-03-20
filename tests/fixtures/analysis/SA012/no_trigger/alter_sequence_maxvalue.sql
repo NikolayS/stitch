@@ -1,0 +1,1 @@
+ALTER SEQUENCE users_id_seq MAXVALUE 999999;

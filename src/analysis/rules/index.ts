@@ -17,6 +17,17 @@ export { SA007 } from "./SA007.js";
 export { SA008 } from "./SA008.js";
 export { SA009 } from "./SA009.js";
 export { SA010 } from "./SA010.js";
+export { SA011 } from "./SA011.js";
+export { SA012 } from "./SA012.js";
+export { SA013 } from "./SA013.js";
+export { SA014 } from "./SA014.js";
+export { SA015 } from "./SA015.js";
+export { SA016 } from "./SA016.js";
+export { SA017 } from "./SA017.js";
+export { SA018 } from "./SA018.js";
+export { SA019 } from "./SA019.js";
+export { SA020 } from "./SA020.js";
+export { SA021 } from "./SA021.js";
 
 import { SA001 } from "./SA001.js";
 import { SA002 } from "./SA002.js";
@@ -29,6 +40,17 @@ import { SA007 } from "./SA007.js";
 import { SA008 } from "./SA008.js";
 import { SA009 } from "./SA009.js";
 import { SA010 } from "./SA010.js";
+import { SA011 } from "./SA011.js";
+import { SA012 } from "./SA012.js";
+import { SA013 } from "./SA013.js";
+import { SA014 } from "./SA014.js";
+import { SA015 } from "./SA015.js";
+import { SA016 } from "./SA016.js";
+import { SA017 } from "./SA017.js";
+import { SA018 } from "./SA018.js";
+import { SA019 } from "./SA019.js";
+import { SA020 } from "./SA020.js";
+import { SA021 } from "./SA021.js";
 
 import type { Rule } from "../types.js";
 
@@ -45,6 +67,17 @@ export const allRules: Rule[] = [
   SA008,
   SA009,
   SA010,
+  SA011,
+  SA012,
+  SA013,
+  SA014,
+  SA015,
+  SA016,
+  SA017,
+  SA018,
+  SA019,
+  SA020,
+  SA021,
 ];
 
 /** Look up a rule by ID */

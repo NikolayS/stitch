@@ -1,0 +1,1 @@
+ALTER TABLE users VALIDATE CONSTRAINT chk_age;

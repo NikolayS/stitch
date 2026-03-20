@@ -1,0 +1,1 @@
+DROP SEQUENCE old_seq;

@@ -1,0 +1,1 @@
+LOCK TABLE orders IN SHARE MODE;
