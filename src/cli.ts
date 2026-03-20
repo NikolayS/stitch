@@ -2,6 +2,7 @@
 // sqlever — Sqitch-compatible PostgreSQL migration tool
 
 import packageJson from "../package.json";
+import { runInit } from "./commands/init";
 import { setConfig, type OutputFormat } from "./output";
 
 // ---------------------------------------------------------------------------
@@ -277,6 +278,16 @@ export function main(argv: string[] = process.argv.slice(2)): void {
   if (!(args.command in COMMANDS)) {
     process.stderr.write(`sqlever: unknown command '${args.command}'\n`);
     process.exit(1);
+  }
+
+  // --- Dispatch to implemented commands ---
+  if (args.command === "init") {
+    runInit(args).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`sqlever init: ${msg}\n`);
+      process.exit(1);
+    });
+    return;
   }
 
   // Known command — stub handler
