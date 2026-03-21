@@ -22,6 +22,7 @@ import { shutdownManager } from "../signals";
 import { info, error as logError, verbose, getConfig } from "../output";
 import { sqitchToStandard } from "../db/uri";
 import { DeployProgress, shouldUseTUI } from "../tui/deploy";
+import { parseDblabOptions, runDblabDeploy } from "./deploy-dblab";
 
 // ---------------------------------------------------------------------------
 // Exit codes (SPEC R6)
@@ -777,6 +778,12 @@ function buildDependencies(
  * so that callers (and finally blocks) can run cleanup before exiting.
  */
 export async function runDeploy(args: ParsedArgs): Promise<number> {
+  // Check for DBLab flags — if present, delegate to the DBLab workflow
+  const dblabOpts = parseDblabOptions(args);
+  if (dblabOpts) {
+    return runDblabDeploy(dblabOpts);
+  }
+
   const options = parseDeployOptions(args);
 
   if (!options.dbUri) {
