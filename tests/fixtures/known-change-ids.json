@@ -1,5 +1,5 @@
 {
-  "_comment": "Hand-computed SHA-1 values for Sqitch-compatible change/tag ID verification. Each entry specifies the full input and the expected 40-char hex ID.",
+  "_comment": "Hand-computed SHA-1 values for Sqitch-compatible change/tag ID verification. Each entry specifies the full input and the expected 40-char hex ID. Verified against real Sqitch v1.6.1 (Perl Digest::SHA).",
 
   "first_change_no_uri": {
     "input": {
@@ -12,7 +12,7 @@
       "conflicts": [],
       "note": ""
     },
-    "expected_id": "f5abb43c365b611ccf0968e3e0f250c567197941"
+    "expected_id": "f0893c3a0550e0c4aa52bae5f45d6d6ab529d43e"
   },
 
   "first_change_with_uri": {
@@ -27,7 +27,7 @@
       "conflicts": [],
       "note": ""
     },
-    "expected_id": "abb4e0b31bef45fce3afa74816c48fc489779613"
+    "expected_id": "f3b3afc29825731ce49da1a3286dccc13afceaea"
   },
 
   "second_change_with_parent": {
@@ -42,7 +42,7 @@
       "conflicts": [],
       "note": ""
     },
-    "expected_id": "beb07759db8ed811a9be170abe83ca24db5a8a28"
+    "expected_id": "319648cdee1af1cf90be980651df69de51cf8d36"
   },
 
   "with_requires": {
@@ -57,7 +57,7 @@
       "conflicts": [],
       "note": ""
     },
-    "expected_id": "ea24b39bf81497e0b311efc26fc432a89945b3e6"
+    "expected_id": "15959e0ec706234aae91f387d90ff47abe996b1b"
   },
 
   "with_conflicts": {
@@ -72,7 +72,7 @@
       "conflicts": ["old_auth"],
       "note": ""
     },
-    "expected_id": "c43438a75c50c82c79b8aa7525d607ed1d8e0484"
+    "expected_id": "a4b3d90a09c6928e3d2a1bf7f7ad0d4186a18167"
   },
 
   "with_both_requires_and_conflicts": {
@@ -87,7 +87,7 @@
       "conflicts": ["legacy_schema"],
       "note": ""
     },
-    "expected_id": "3015be2698db3efccb7ba6110146bb0551572ea8"
+    "expected_id": "d855d7fb6e36650e841cff24c334f45c14fd567c"
   },
 
   "with_note": {
@@ -102,7 +102,7 @@
       "conflicts": [],
       "note": "Performance improvement for queries"
     },
-    "expected_id": "295b31d61b0a26fdfa6ab3b901c73b6c49c54000"
+    "expected_id": "048c3305a2c89c1a0c25313b64d64270aa208e71"
   },
 
   "with_uri_and_note": {
@@ -118,7 +118,7 @@
       "conflicts": [],
       "note": "Performance improvement for queries"
     },
-    "expected_id": "7c262fb3944b59ef2b6220a88b005a0de65ca9f0"
+    "expected_id": "02873ccdaf48b9e23ce4dc1fde520b9c4c721500"
   },
 
   "reworked_change": {
@@ -133,7 +133,7 @@
       "conflicts": [],
       "note": "Rework bootstrap for v2"
     },
-    "expected_id": "5c8e2c3c016c9989f8f091a5b69219ff2faa0ea1"
+    "expected_id": "e130e83fe409154f93051f06cda625ea4a972f90"
   },
 
   "tag_with_note": {
@@ -147,7 +147,7 @@
       "planned_at": "2024-07-04T01:00:00Z",
       "note": "First stable release"
     },
-    "expected_id": "9129e554548e3a60f588094a8424e171eb41fd7b"
+    "expected_id": "fc87f2957445bcf533ac202f13bac3b2f2163958"
   },
 
   "tag_without_note": {
@@ -161,7 +161,7 @@
       "planned_at": "2024-07-04T00:30:00Z",
       "note": ""
     },
-    "expected_id": "189ce2e99273c86964057e286aa98a9d499517f6"
+    "expected_id": "228d858c88d72953bd0437792ef1a781302ac9ed"
   },
 
   "planner_with_commas": {
@@ -176,7 +176,7 @@
       "conflicts": [],
       "note": ""
     },
-    "expected_id": "cc6165881f0388e79dc38b836826bd4a2b531f90"
+    "expected_id": "30b5229bab945316d216ef47fc6ccda9bfc250da"
   },
 
   "cross_project_dep": {
@@ -191,7 +191,7 @@
       "conflicts": [],
       "note": ""
     },
-    "expected_id": "9f538078a0a3d7810f83dca19bccb74fc1ea448f"
+    "expected_id": "40f361e752821ab97885ed2fe0736efd3220efe7"
   },
 
   "empty_note_equals_no_note": {
@@ -205,6 +205,6 @@
       "conflicts": [],
       "note": ""
     },
-    "expected_id": "4a7197cd091266d1d23e350cd49578c299cd634d"
+    "expected_id": "c4654d467e7dda87dfa38849527a57603656123f"
   }
 }

@@ -62,7 +62,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("8edcefb586de12c59f02512d70987ee81d7bc7b0");
+    expect(id).toBe("1da0ceafe3d2a70b4f870bb4a9ae55fa48b57a83");
   });
 
   it("2: change with parent (second change in plan)", () => {
@@ -79,7 +79,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("00e9f46974290ef11cb02c53561fc95a3c091b2c");
+    expect(id).toBe("bd04c81f17776794f4f60b0187d590d8627347b6");
   });
 
   it("3: change with URI", () => {
@@ -96,7 +96,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("485341707b64764137cbd58bcdfcdedd65b05f7f");
+    expect(id).toBe("4e7702993536aa012624298de4d2be01e1b1ef79");
   });
 
   it("4: change with requires dependencies", () => {
@@ -112,7 +112,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("4e3e43fe6db89b8abf8e352a877c06a8da54f363");
+    expect(id).toBe("3ac863adf2afd3ee84e22b733c39e4df60a24fbb");
   });
 
   it("5: change with conflicts", () => {
@@ -128,7 +128,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("274e79b3e35726de4c3c95b8d5f857ed4e10dc85");
+    expect(id).toBe("0756774c5df829eac58222fdbe91b72f1aaf06a7");
   });
 
   it("6: change with note", () => {
@@ -144,7 +144,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("3a6c4fac7b6ffdf433106e1aeba7953f0f7b0efa");
+    expect(id).toBe("ac389d5803514b747af189a32f6a62f844703ade");
   });
 
   it("7: full change — URI, parent, requires, conflicts, note", () => {
@@ -162,7 +162,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("64c3d274330067d4e3df28e3f5019f787a7c5bf4");
+    expect(id).toBe("6d194b2a7fe6d9a8655f31332cb350bb1dc72dde");
   });
 
   it("11: unicode in change name, planner, and note", () => {
@@ -178,7 +178,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("f336cdde5f77b21c00bb285aa954501d4770dc31");
+    expect(id).toBe("3aa918f9713eb601d944efc41093ac5a2334ce68");
   });
 
   it("12: requires AND conflicts together", () => {
@@ -195,7 +195,7 @@ describe("computeChangeId", () => {
     };
 
     const id = computeChangeId(input);
-    expect(id).toBe("6306be797643dd66a6b06ed0cd9001befdff2bb7");
+    expect(id).toBe("b7955f080808fc1dcd3c708d596b2cdf51eb5620");
   });
 
   it("content uses byte length, not string length for unicode", () => {
@@ -218,8 +218,8 @@ describe("computeChangeId", () => {
 
     // UTF-8 bytes > string length due to multi-byte chars
     expect(byteLength).toBeGreaterThan(stringLength);
-    expect(byteLength).toBe(130);
-    expect(stringLength).toBe(125);
+    expect(byteLength).toBe(129);
+    expect(stringLength).toBe(124);
   });
 
   it("empty parent string is treated as no parent", () => {
@@ -306,7 +306,7 @@ describe("buildChangeContent", () => {
       "project myproject\n" +
         "change first_change\n" +
         "planner Test User <test@example.com>\n" +
-        "date 2024-01-15T12:00:00Z\n",
+        "date 2024-01-15T12:00:00Z",
     );
   });
 
@@ -338,7 +338,7 @@ describe("buildChangeContent", () => {
         "conflicts\n" +
         "  - old_users\n" +
         "\n" +
-        "Add users table for authentication\n",
+        "Add users table for authentication",
     );
   });
 
@@ -355,8 +355,9 @@ describe("buildChangeContent", () => {
     };
 
     const content = buildChangeContent(input);
-    // Should end with: ...date line\n\nSome note\n
-    expect(content).toContain("2024-01-15T12:00:00Z\n\nSome note\n");
+    // Should end with: ...date line\n\nSome note (no trailing \n)
+    expect(content).toContain("2024-01-15T12:00:00Z\n\nSome note");
+    expect(content).not.toMatch(/Some note\n$/);
   });
 
   it("no blank line when note is empty", () => {
@@ -372,12 +373,12 @@ describe("buildChangeContent", () => {
     };
 
     const content = buildChangeContent(input);
-    // Should NOT have trailing blank line
+    // Should NOT have trailing blank line or trailing \n
     expect(content).toBe(
       "project myproject\n" +
         "change test\n" +
         "planner User <user@example.com>\n" +
-        "date 2024-01-15T12:00:00Z\n",
+        "date 2024-01-15T12:00:00Z",
     );
   });
 
@@ -394,7 +395,7 @@ describe("buildChangeContent", () => {
     };
 
     const content = buildChangeContent(input);
-    expect(content).toContain("requires\n  + dep1\n  + dep2\n");
+    expect(content).toContain("requires\n  + dep1\n  + dep2");
   });
 
   it("conflicts section with indented - prefix", () => {
@@ -410,7 +411,7 @@ describe("buildChangeContent", () => {
     };
 
     const content = buildChangeContent(input);
-    expect(content).toContain("conflicts\n  - conf1\n");
+    expect(content).toContain("conflicts\n  - conf1");
   });
 });
 
@@ -431,7 +432,7 @@ describe("computeTagId", () => {
     };
 
     const id = computeTagId(input);
-    expect(id).toBe("526fe5e1e63376bfb29593d303258cd79eaf87b0");
+    expect(id).toBe("c4838045e864db0eb340afcfc035702e13e122e9");
   });
 
   it("9: tag with URI and note", () => {
@@ -447,7 +448,7 @@ describe("computeTagId", () => {
     };
 
     const id = computeTagId(input);
-    expect(id).toBe("28bc678f48aa5604ae510ce254b017298e615f18");
+    expect(id).toBe("9b012177c5b8c2a53af608f6e78e20cdffafead4");
   });
 
   it("tag name includes @ prefix in content", () => {
@@ -532,7 +533,7 @@ describe("buildTagContent", () => {
         "tag @v1.0\n" +
         "change deadbeef\n" +
         "planner Test User <test@example.com>\n" +
-        "date 2024-01-15T12:00:00Z\n",
+        "date 2024-01-15T12:00:00Z",
     );
   });
 
@@ -557,7 +558,7 @@ describe("buildTagContent", () => {
         "planner Test User <test@example.com>\n" +
         "date 2024-01-15T12:00:00Z\n" +
         "\n" +
-        "First release\n",
+        "First release",
     );
   });
 });

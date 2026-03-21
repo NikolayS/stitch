@@ -185,8 +185,9 @@ export function buildChangeContent(input: ChangeIdInput): string {
     lines.push(input.note);
   }
 
-  // Each line terminated by \n, including the last one
-  return lines.join("\n") + "\n";
+  // Lines joined by \n — NO trailing newline (matches Sqitch's Perl
+  // `join "\n", (...)` which only separates, never terminates).
+  return lines.join("\n");
 }
 
 /**
@@ -240,7 +241,9 @@ export function buildTagContent(input: TagIdInput): string {
     lines.push(input.note);
   }
 
-  return lines.join("\n") + "\n";
+  // Lines joined by \n — NO trailing newline (matches Sqitch's Perl
+  // `join "\n", (...)` which only separates, never terminates).
+  return lines.join("\n");
 }
 
 /**
