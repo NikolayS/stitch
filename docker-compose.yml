@@ -6,6 +6,10 @@
 #   docker compose down -v      # stop PG and remove data volume
 #
 # Port 5417 avoids conflicts with any local PostgreSQL on the default 5432.
+#
+# Production image: see Dockerfile at the repo root. Build with:
+#   bun run build  # produces dist/sqlever-linux-amd64
+#   docker build -t sqlever .
 
 services:
   postgres:

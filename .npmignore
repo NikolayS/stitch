@@ -1,0 +1,8 @@
+tests/
+spec/
+.github/
+.claude/
+docker-compose.yml
+Dockerfile
+tsconfig.json
+bun.lock
