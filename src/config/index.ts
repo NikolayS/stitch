@@ -151,13 +151,19 @@ export function loadConfig(
   const sqleverToml = loadSqleverToml(cwd);
 
   // 3. Build core config from sqitch.conf
+  //
+  // Sqitch convention: when top_dir is set, the default paths for plan_file,
+  // deploy_dir, revert_dir, and verify_dir are relative to top_dir — not
+  // the project root. Only apply this when the individual path is NOT
+  // explicitly configured in sqitch.conf.
+  const topDir = confGetString(merged, "core.top_dir") ?? DEFAULT_CORE.top_dir;
   const core: CoreConfig = {
     engine: confGetString(merged, "core.engine") ?? DEFAULT_CORE.engine,
-    top_dir: confGetString(merged, "core.top_dir") ?? DEFAULT_CORE.top_dir,
-    deploy_dir: confGetString(merged, "core.deploy_dir") ?? DEFAULT_CORE.deploy_dir,
-    revert_dir: confGetString(merged, "core.revert_dir") ?? DEFAULT_CORE.revert_dir,
-    verify_dir: confGetString(merged, "core.verify_dir") ?? DEFAULT_CORE.verify_dir,
-    plan_file: confGetString(merged, "core.plan_file") ?? DEFAULT_CORE.plan_file,
+    top_dir: topDir,
+    deploy_dir: confGetString(merged, "core.deploy_dir") ?? join(topDir, DEFAULT_CORE.deploy_dir),
+    revert_dir: confGetString(merged, "core.revert_dir") ?? join(topDir, DEFAULT_CORE.revert_dir),
+    verify_dir: confGetString(merged, "core.verify_dir") ?? join(topDir, DEFAULT_CORE.verify_dir),
+    plan_file: confGetString(merged, "core.plan_file") ?? join(topDir, DEFAULT_CORE.plan_file),
   };
 
   // 4. Build deploy config
