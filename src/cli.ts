@@ -7,6 +7,7 @@ import { runStatus } from "./commands/status";
 import { runDeploy } from "./commands/deploy";
 import { setConfig, type OutputFormat } from "./output";
 import { parseAddArgs, runAdd } from "./commands/add";
+import { parseExpandArgs, runExpandAdd } from "./expand-contract/generator";
 import { runLogCommand } from "./commands/log";
 import { runRevert } from "./commands/revert";
 import { parseTagArgs, runTag } from "./commands/tag";
@@ -315,6 +316,16 @@ export function main(argv: string[] = process.argv.slice(2)): void {
   }
 
   if (args.command === "add") {
+    // Check if --expand flag is present
+    if (args.rest.includes("--expand")) {
+      const expandOpts = parseExpandArgs(args.rest);
+      expandOpts.topDir = args.topDir;
+      runExpandAdd(expandOpts).catch((err: unknown) => {
+        process.stderr.write(`sqlever add --expand: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.exit(1);
+      });
+      return;
+    }
     const addOpts = parseAddArgs(args.rest);
     addOpts.topDir = args.topDir;
     runAdd(addOpts).catch((err: unknown) => {
