@@ -1,0 +1,9 @@
+%syntax-version=1.0.0
+%project=customer_zero_test
+%uri=https://example.com/customer-zero-test
+
+create_users 2024-01-15T10:00:00Z Test Runner <test@example.com> # Simple users table
+create_audit_func [create_users] 2024-01-15T10:01:00Z Test Runner <test@example.com> # Audit logging function (multi-statement)
+add_user_profiles [create_users] 2024-01-15T10:02:00Z Test Runner <test@example.com> # User profiles with FK to users
+seed_initial_data [create_users add_user_profiles] 2024-01-15T10:03:00Z Test Runner <test@example.com> # Seed initial data (inline SQL, replaces \i pattern)
+add_user_notes [create_users] 2024-01-15T10:04:00Z Test Runner <test@example.com> # Notes with special chars: "quotes", slashes \n\t, & ampersands <angle> brackets
