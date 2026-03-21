@@ -126,7 +126,6 @@ function runSqitchDocker(
     "-w", "/repo",
     ...envFlags,
     SQITCH_IMAGE,
-    "sqitch",
     ...args,
   ].map(a => `'${a}'`).join(" ");
 

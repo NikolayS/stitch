@@ -131,6 +131,9 @@ const hasPg = await pgAvailable();
 function runSqitch(projectDir: string, args: string[]): string {
   // Mount the project dir into the container; use host networking so
   // Sqitch can reach PG on localhost:5417.
+  // Note: The sqitch/sqitch:latest image has ENTRYPOINT ["/bin/sqitch"],
+  // so we only pass sqitch sub-command args (e.g. "deploy", "status").
+  // We use shell quoting to handle spaces in env values (e.g. PLANNER_NAME).
   const cmd = [
     "docker", "run", "--rm",
     "--network", "host",
@@ -140,7 +143,7 @@ function runSqitch(projectDir: string, args: string[]): string {
     "-e", `SQITCH_EMAIL=${PLANNER_EMAIL}`,
     "sqitch/sqitch:latest",
     ...args,
-  ].join(" ");
+  ].map(a => `'${a}'`).join(" ");
 
   return execSync(cmd, {
     encoding: "utf-8",
