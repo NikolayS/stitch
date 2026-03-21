@@ -32,6 +32,20 @@ export interface ModifiedScript {
   current_hash: string;
 }
 
+/** Expand/contract operation status for the status command. */
+export interface ExpandContractStatus {
+  /** Base change name (e.g., "rename_users_name"). */
+  change_name: string;
+  /** Current phase: expanding, expanded, contracting, completed. */
+  phase: string;
+  /** Schema-qualified table name. */
+  table: string;
+  /** When the operation started. */
+  started_at: string;
+  /** Who started the operation. */
+  started_by: string;
+}
+
 /** Full status result used for both text and JSON output. */
 export interface StatusResult {
   /** Project name from the plan. */
@@ -53,6 +67,8 @@ export interface StatusResult {
   } | null;
   /** Scripts modified since deployment (script_hash mismatch). */
   modified_scripts: ModifiedScript[];
+  /** Active expand/contract operations (non-completed). */
+  expand_contract_operations: ExpandContractStatus[];
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +157,7 @@ export function computeStatus(
   deployedChanges: RegistryChange[],
   targetUri: string | null,
   deployDir: string,
+  ecOperations: ExpandContractStatus[] = [],
 ): StatusResult {
   const deployedIds = new Set(deployedChanges.map((c) => c.change_id));
   const deployedMap = new Map(
@@ -199,6 +216,7 @@ export function computeStatus(
     pending_changes: pendingPlanChanges.map((c) => c.name),
     last_deployed: lastDeployed,
     modified_scripts: modifiedScripts,
+    expand_contract_operations: ecOperations,
   };
 }
 
@@ -247,9 +265,18 @@ export function formatStatusText(result: StatusResult): string {
     }
   }
 
+  if (result.expand_contract_operations.length > 0) {
+    lines.push("");
+    lines.push("Expand/contract operations:");
+    for (const op of result.expand_contract_operations) {
+      lines.push(`  ~ ${op.change_name} [${op.phase}] on ${op.table}`);
+    }
+  }
+
   if (
     result.pending_count === 0 &&
-    result.modified_scripts.length === 0
+    result.modified_scripts.length === 0 &&
+    result.expand_contract_operations.length === 0
   ) {
     lines.push("");
     lines.push("Nothing to deploy. Everything is up-to-date.");
@@ -306,6 +333,7 @@ export async function runStatus(args: ParsedArgs): Promise<void> {
   // Connect to database and read deployed changes
   const { DatabaseClient } = await import("../db/client");
   const { Registry } = await import("../db/registry");
+  const { ExpandContractTracker } = await import("../expand-contract/tracker");
 
   const client = new DatabaseClient(targetUri, {
     command: "status",
@@ -317,8 +345,26 @@ export async function runStatus(args: ParsedArgs): Promise<void> {
     const registry = new Registry(client);
     const deployedChanges = await registry.getDeployedChanges(plan.project.name);
 
+    // Query expand/contract state (best-effort — table may not exist)
+    let ecOperations: ExpandContractStatus[] = [];
+    try {
+      const tracker = new ExpandContractTracker(client);
+      const activeOps = await tracker.listActiveOperations(plan.project.name);
+      ecOperations = activeOps.map((op) => ({
+        change_name: op.change_name,
+        phase: op.phase,
+        table: `${op.table_schema}.${op.table_name}`,
+        started_at: op.started_at instanceof Date
+          ? op.started_at.toISOString()
+          : String(op.started_at),
+        started_by: op.started_by,
+      }));
+    } catch {
+      // expand_contract_state table may not exist yet — that's fine
+    }
+
     const deployDir = join(topDir, config.core.deploy_dir);
-    const result = computeStatus(plan, deployedChanges, targetUri, deployDir);
+    const result = computeStatus(plan, deployedChanges, targetUri, deployDir, ecOperations);
 
     if (options.format === "json") {
       jsonOut(result);

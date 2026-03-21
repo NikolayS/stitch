@@ -456,6 +456,7 @@ describe("formatStatusText", () => {
       pending_changes: [],
       last_deployed: null,
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).toContain("# Project: myproject");
@@ -470,6 +471,7 @@ describe("formatStatusText", () => {
       pending_changes: [],
       last_deployed: null,
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).toContain("# Target:  postgresql://host/db");
@@ -484,6 +486,7 @@ describe("formatStatusText", () => {
       pending_changes: [],
       last_deployed: null,
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).not.toContain("Target:");
@@ -498,6 +501,7 @@ describe("formatStatusText", () => {
       pending_changes: ["a", "b", "c"],
       last_deployed: null,
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).toContain("Deployed: 5");
@@ -513,6 +517,7 @@ describe("formatStatusText", () => {
       pending_changes: ["add_users", "add_orders"],
       last_deployed: null,
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).toContain("  * add_users");
@@ -533,6 +538,7 @@ describe("formatStatusText", () => {
         committer_name: "Alice",
       },
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).toContain("# Last deployed change:");
@@ -557,6 +563,7 @@ describe("formatStatusText", () => {
           current_hash: "new_hash",
         },
       ],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).toContain("Modified scripts (hash mismatch):");
@@ -572,6 +579,7 @@ describe("formatStatusText", () => {
       pending_changes: [],
       last_deployed: null,
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).toContain("Nothing to deploy. Everything is up-to-date.");
@@ -586,6 +594,7 @@ describe("formatStatusText", () => {
       pending_changes: ["change_b"],
       last_deployed: null,
       modified_scripts: [],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).not.toContain("Nothing to deploy");
@@ -607,6 +616,7 @@ describe("formatStatusText", () => {
           current_hash: "b",
         },
       ],
+      expand_contract_operations: [],
     };
     const text = formatStatusText(result);
     expect(text).not.toContain("Nothing to deploy");

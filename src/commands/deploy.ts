@@ -14,7 +14,7 @@ import { Registry, type RecordDeployInput } from "../db/registry";
 import { parsePlan } from "../plan/parser";
 import { topologicalSort, filterPending, filterToTarget, validateDependencies } from "../plan/sort";
 import { computeScriptHash } from "../plan/types";
-import type { Change, Plan, Tag } from "../plan/types";
+import type { Change, Plan } from "../plan/types";
 import { PsqlRunner, type PsqlRunResult } from "../psql";
 import { shouldSetLockTimeout } from "../lock-guard";
 import { resolveDeployIncludes } from "../includes/snapshot";
@@ -23,6 +23,8 @@ import { info, error as logError, verbose, getConfig } from "../output";
 import { sqitchToStandard } from "../db/uri";
 import { DeployProgress, shouldUseTUI } from "../tui/deploy";
 import { parseDblabOptions, runDblabDeploy } from "./deploy-dblab";
+import { isExpandChange, isContractChange } from "../expand-contract/phase-filter";
+import { ExpandContractTracker } from "../expand-contract/tracker";
 
 // ---------------------------------------------------------------------------
 // Exit codes (SPEC R6)
@@ -65,6 +67,9 @@ export function projectLockKey(projectName: string): number {
 // Deploy options
 // ---------------------------------------------------------------------------
 
+/** Expand/contract deploy phase. */
+export type DeployPhase = "expand" | "contract";
+
 export interface DeployOptions {
   /** Deploy up to and including this change name. */
   to?: string;
@@ -94,6 +99,8 @@ export interface DeployOptions {
   noTui: boolean;
   /** Skip snapshot include resolution; use HEAD/current files (Sqitch-compatible). */
   noSnapshot: boolean;
+  /** Expand/contract phase filter: deploy only expand or contract migrations. */
+  phase?: DeployPhase;
 }
 
 /**
@@ -108,6 +115,7 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
   let lockTimeout: number | undefined;
   let noTui = false;
   let noSnapshot = false;
+  let phase: DeployPhase | undefined;
   const variables: Record<string, string> = {};
 
   const rest = args.rest;
@@ -115,6 +123,18 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
   while (i < rest.length) {
     const token = rest[i]!;
 
+    if (token === "--phase") {
+      const val = rest[++i];
+      if (!val || val.startsWith("-")) {
+        throw new Error("--phase requires a value (expand or contract)");
+      }
+      if (val !== "expand" && val !== "contract") {
+        throw new Error(`Unknown phase: ${val}. Must be one of: expand, contract`);
+      }
+      phase = val;
+      i++;
+      continue;
+    }
     if (token === "--to") {
       const val = rest[++i];
       if (!val || val.startsWith("-")) {
@@ -277,6 +297,7 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
     committerEmail,
     noTui,
     noSnapshot,
+    phase,
   };
 }
 
@@ -444,7 +465,90 @@ export async function executeDeploy(
     const deployedNames = deployedChanges.map((c) => c.change);
 
     // 8. Compute pending changes (re-filter with DB state)
-    const pendingChanges = filterPending(allChanges, Array.from(deployedIds));
+    let pendingChanges = filterPending(allChanges, Array.from(deployedIds));
+
+    // 8a. Phase filtering: --phase expand deploys only expand migrations,
+    //     --phase contract deploys only contract migrations (after backfill check)
+    if (options.phase) {
+      const tracker = new ExpandContractTracker(db);
+
+      if (options.phase === "expand") {
+        // Filter to only expand changes (naming convention: *_expand)
+        pendingChanges = pendingChanges.filter((c) => isExpandChange(c.name));
+        if (pendingChanges.length === 0) {
+          info("No pending expand migrations to deploy.");
+          return { deployed: 0, skipped: 0, dryRun: options.dryRun };
+        }
+      } else if (options.phase === "contract") {
+        // Contract phase: filter to only contract changes
+        const contractPending = pendingChanges.filter((c) => isContractChange(c.name));
+        if (contractPending.length === 0) {
+          info("No pending contract migrations to deploy.");
+          return { deployed: 0, skipped: 0, dryRun: options.dryRun };
+        }
+
+        // Verify that the expand phase has been deployed for each contract change.
+        // For a contract change named "foo_contract", the expand change is "foo_expand".
+        for (const cc of contractPending) {
+          const baseName = cc.name.replace(/_contract$/, "");
+          const expandName = `${baseName}_expand`;
+
+          // Check if the expand change is deployed
+          if (!deployedNames.includes(expandName)) {
+            return {
+              deployed: 0,
+              skipped: 0,
+              dryRun: options.dryRun,
+              failedChange: cc.name,
+              error: `Cannot deploy contract change "${cc.name}": expand change "${expandName}" has not been deployed yet. Run 'sqlever deploy --phase expand' first.`,
+            };
+          }
+
+          // Verify backfill completion via the tracker.
+          // Look up the operation state; if it exists and is in "expanded" phase,
+          // the backfill has been verified. If in "expanding", the expand deploy
+          // succeeded but the tracker needs to be transitioned.
+          await tracker.ensureSchema();
+          const operation = await tracker.getOperationByName(projectName, baseName);
+          if (operation) {
+            if (operation.phase === "expanding") {
+              // Auto-transition from expanding -> expanded (expand deploy is done)
+              await tracker.transitionPhase(operation.id, "expanded");
+              verbose(`Auto-transitioned "${baseName}" from expanding to expanded.`);
+            }
+            if (operation.phase === "expanded") {
+              // Transition to contracting (which verifies backfill)
+              try {
+                await tracker.transitionPhase(operation.id, "contracting", {
+                  table_schema: operation.table_schema,
+                  table_name: operation.table_name,
+                  new_column: baseName.replace(/^.*_/, ""),
+                });
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                if (msg.includes("backfill")) {
+                  return {
+                    deployed: 0,
+                    skipped: 0,
+                    dryRun: options.dryRun,
+                    failedChange: cc.name,
+                    error: `Cannot deploy contract change "${cc.name}": ${msg}`,
+                  };
+                }
+                // If backfill check fails for other reasons (e.g., table not tracked),
+                // log a warning but allow the contract migration's own SQL to handle verification
+                verbose(`Tracker backfill check skipped for "${baseName}": ${msg}`);
+              }
+            }
+            // If already "contracting" or "completed", proceed
+          }
+          // If no tracker record exists, the contract migration's own SQL
+          // (which includes a backfill verification check) will handle it
+        }
+
+        pendingChanges = contractPending;
+      }
+    }
 
     if (pendingChanges.length === 0) {
       info("Nothing to deploy. Database is up to date.");
@@ -685,6 +789,51 @@ export async function executeDeploy(
             };
           }
         }
+      }
+    }
+
+    // 10a. Update expand/contract tracker state after successful deploys
+    if (options.phase && deployedCount > 0) {
+      const tracker = new ExpandContractTracker(db);
+      try {
+        await tracker.ensureSchema();
+
+        if (options.phase === "expand") {
+          // For each deployed expand change, create or update tracker state
+          for (const change of sortedChanges) {
+            if (isExpandChange(change.name)) {
+              const baseName = change.name.replace(/_expand$/, "");
+              const existing = await tracker.getOperationByName(projectName, baseName);
+              if (!existing) {
+                // Create new operation in "expanding" phase, then transition to "expanded"
+                const op = await tracker.createOperation({
+                  change_name: baseName,
+                  project: projectName,
+                  table_schema: "public",
+                  table_name: baseName,
+                  started_by: options.committerEmail,
+                });
+                await tracker.transitionPhase(op.id, "expanded");
+                verbose(`Tracker: "${baseName}" -> expanded`);
+              }
+            }
+          }
+        } else if (options.phase === "contract") {
+          // For each deployed contract change, transition tracker to "completed"
+          for (const change of sortedChanges) {
+            if (isContractChange(change.name)) {
+              const baseName = change.name.replace(/_contract$/, "");
+              const existing = await tracker.getOperationByName(projectName, baseName);
+              if (existing && existing.phase === "contracting") {
+                await tracker.transitionPhase(existing.id, "completed");
+                verbose(`Tracker: "${baseName}" -> completed`);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // Tracker updates are best-effort — the deploy itself succeeded
+        verbose(`Tracker state update failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
 
