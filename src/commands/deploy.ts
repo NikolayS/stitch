@@ -393,13 +393,17 @@ export async function executeDeploy(
     allChanges = filterToTarget(allChanges, options.to);
   }
 
+  // Build script name lookup: change_id -> script filename (handles reworks)
+  const dryRunScriptNameMap = buildScriptNameMap(plan);
+
   // Dry-run: show what would be deployed without touching the database.
   // Per spec, --dry-run makes zero DB changes.
   if (options.dryRun) {
     const sortedChanges = topologicalSort(allChanges);
     info(`Dry-run: ${sortedChanges.length} change(s) would be deployed:`);
     for (const change of sortedChanges) {
-      const deployPath = scriptPath(topDir, deployDir, change.name);
+      const sName = dryRunScriptNameMap.get(change.change_id) ?? change.name;
+      const deployPath = scriptPath(topDir, deployDir, sName);
       const noTxn = existsSync(deployPath) && isNonTransactional(readFileSync(deployPath, "utf-8"));
       const marker = noTxn ? " [no-transaction]" : "";
       info(`  + ${change.name}${marker}`);
@@ -564,6 +568,9 @@ export async function executeDeploy(
     // Build tag lookup: change_id -> tags attached to it
     const changeTagMap = buildChangeTagMap(plan);
 
+    // Build script name lookup: change_id -> script filename (handles reworks)
+    const scriptNameMap = buildScriptNameMap(plan);
+
     // 9. Set up TUI progress dashboard
     const outputCfg = getConfig();
     const useTUI = shouldUseTUI({ noTui: options.noTui, quiet: outputCfg.quiet });
@@ -592,7 +599,10 @@ export async function executeDeploy(
         };
       }
 
-      const deployScript = scriptPath(topDir, deployDir, change.name);
+      // Use the script name map to resolve reworked changes to their
+      // versioned script (e.g. add_users@v1.0.sql for the original).
+      const changeScriptName = scriptNameMap.get(change.change_id) ?? change.name;
+      const deployScript = scriptPath(topDir, deployDir, changeScriptName);
       if (!existsSync(deployScript)) {
         progress.updateChange(change.name, "failed");
         failedCount++;
@@ -762,7 +772,7 @@ export async function executeDeploy(
 
       // Run verify if enabled
       if (options.verify) {
-        const verifyScript = scriptPath(topDir, verifyDir, change.name);
+        const verifyScript = scriptPath(topDir, verifyDir, changeScriptName);
         if (existsSync(verifyScript)) {
           verbose(`Verifying change: ${change.name}`);
           const verifyResult = await psqlRunner.run(verifyScript, {
@@ -872,6 +882,68 @@ export async function executeDeploy(
  * Build the change -> tag name mapping from the plan.
  * Returns tags formatted as "@tagname" for the events table.
  */
+/**
+ * Build a mapping from change_id to the script filename (without .sql).
+ *
+ * For reworked changes the earlier version's script lives at
+ * `<name>@<tag>.sql` (created by `sqlever rework`). The latest version
+ * keeps `<name>.sql`. This function inspects the plan for duplicate
+ * change names and resolves the correct script name for each version.
+ */
+function buildScriptNameMap(plan: Plan): Map<string, string> {
+  const map = new Map<string, string>();
+
+  // Group change indices by name to detect reworks
+  const nameIndices = new Map<string, number[]>();
+  for (let i = 0; i < plan.changes.length; i++) {
+    const c = plan.changes[i]!;
+    const indices = nameIndices.get(c.name) ?? [];
+    indices.push(i);
+    nameIndices.set(c.name, indices);
+  }
+
+  // Build a change_id -> tag name lookup for tags that follow a change
+  // Collect all tags indexed by the change_id they are attached to
+  const changeIdToTag = new Map<string, string>();
+  for (const tag of plan.tags) {
+    // First tag wins — we only need the first tag after each change
+    if (!changeIdToTag.has(tag.change_id)) {
+      changeIdToTag.set(tag.change_id, tag.name);
+    }
+  }
+
+  for (const [name, indices] of nameIndices) {
+    if (indices.length === 1) {
+      // No rework — use plain name
+      map.set(plan.changes[indices[0]!]!.change_id, name);
+    } else {
+      // Multiple occurrences — earlier versions use name@tag
+      for (let j = 0; j < indices.length; j++) {
+        const changeIdx = indices[j]!;
+        const change = plan.changes[changeIdx]!;
+
+        if (j < indices.length - 1) {
+          // Earlier version: find the tag between this occurrence and
+          // the next. Walk from this change forward to find the first
+          // tagged change.
+          let tagName: string | undefined;
+          const nextIdx = indices[j + 1]!;
+          for (let k = changeIdx; k < nextIdx; k++) {
+            tagName = changeIdToTag.get(plan.changes[k]!.change_id);
+            if (tagName) break;
+          }
+          map.set(change.change_id, tagName ? `${name}@${tagName}` : name);
+        } else {
+          // Latest version — uses the plain name
+          map.set(change.change_id, name);
+        }
+      }
+    }
+  }
+
+  return map;
+}
+
 function buildChangeTagMap(plan: Plan): Map<string, string[]> {
   const map = new Map<string, string[]>();
   for (const tag of plan.tags) {
@@ -890,26 +962,32 @@ function buildDependencies(
   change: Change,
   allChanges: Change[],
 ): RecordDeployInput["dependencies"] {
+  // Build name -> change_id map (first occurrence wins for reworked changes)
   const changeMap = new Map<string, string>();
   for (const c of allChanges) {
-    changeMap.set(c.name, c.change_id);
+    if (!changeMap.has(c.name)) {
+      changeMap.set(c.name, c.change_id);
+    }
   }
 
   const deps: RecordDeployInput["dependencies"] = [];
 
   for (const req of change.requires) {
+    // Resolve name@tag to base name for lookup
+    const baseName = req.indexOf("@") === -1 ? req : req.slice(0, req.indexOf("@"));
     deps.push({
       type: "require",
       dependency: req,
-      dependency_id: changeMap.get(req) ?? null,
+      dependency_id: changeMap.get(baseName) ?? null,
     });
   }
 
   for (const conflict of change.conflicts) {
+    const baseName = conflict.indexOf("@") === -1 ? conflict : conflict.slice(0, conflict.indexOf("@"));
     deps.push({
       type: "conflict",
       dependency: conflict,
-      dependency_id: changeMap.get(conflict) ?? null,
+      dependency_id: changeMap.get(baseName) ?? null,
     });
   }
 
