@@ -237,6 +237,8 @@ function defaultOptions(dir: string): DeployOptions {
     projectDir: dir,
     committerName: "Test User",
     committerEmail: "test@example.com",
+    noTui: true,
+    noSnapshot: false,
   };
 }
 

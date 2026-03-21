@@ -17,6 +17,7 @@ import { computeScriptHash } from "../plan/types";
 import type { Change, Plan, Tag } from "../plan/types";
 import { PsqlRunner, type PsqlRunResult } from "../psql";
 import { shouldSetLockTimeout } from "../lock-guard";
+import { resolveDeployIncludes } from "../includes/snapshot";
 import { shutdownManager } from "../signals";
 import { info, error as logError, verbose, getConfig } from "../output";
 import { sqitchToStandard } from "../db/uri";
@@ -90,6 +91,8 @@ export interface DeployOptions {
   committerEmail: string;
   /** Disable TUI dashboard even when stdout is a TTY. */
   noTui: boolean;
+  /** Skip snapshot include resolution; use HEAD/current files (Sqitch-compatible). */
+  noSnapshot: boolean;
 }
 
 /**
@@ -103,6 +106,7 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
   let dbClient: string | undefined;
   let lockTimeout: number | undefined;
   let noTui = false;
+  let noSnapshot = false;
   const variables: Record<string, string> = {};
 
   const rest = args.rest;
@@ -181,6 +185,11 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
     }
     if (token === "--no-tui") {
       noTui = true;
+      i++;
+      continue;
+    }
+    if (token === "--no-snapshot") {
+      noSnapshot = true;
       i++;
       continue;
     }
@@ -266,6 +275,7 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
     committerName,
     committerEmail,
     noTui,
+    noSnapshot,
   };
 }
 
@@ -518,15 +528,38 @@ export async function executeDeploy(
         info(`Deploying change: ${change.name}`);
       }
 
-      // Execute via psql
-      const psqlResult = await psqlRunner.run(deployScript, {
-        uri: standardUri,
-        singleTransaction: useSingleTransaction,
-        variables: options.variables,
-        dbClient: options.dbClient,
-        workingDir: topDir,
-        lockTimeout: effectiveLockTimeout,
-      });
+      // Resolve snapshot includes (if any) before executing
+      const resolved = resolveDeployIncludes(
+        deployScript,
+        change.planned_at,
+        topDir,
+        undefined, // commitHash — let resolveDeployIncludes look it up from planned_at
+        options.noSnapshot,
+      );
+
+      // Execute via psql — use assembled content when includes were resolved,
+      // otherwise pass the original script file (preserving psql's own \i handling
+      // when --no-snapshot is set or there are no includes).
+      let psqlResult: PsqlRunResult;
+      if (resolved && !options.noSnapshot) {
+        psqlResult = await psqlRunner.runContent(resolved.content, {
+          uri: standardUri,
+          singleTransaction: useSingleTransaction,
+          variables: options.variables,
+          dbClient: options.dbClient,
+          workingDir: topDir,
+          lockTimeout: effectiveLockTimeout,
+        });
+      } else {
+        psqlResult = await psqlRunner.run(deployScript, {
+          uri: standardUri,
+          singleTransaction: useSingleTransaction,
+          variables: options.variables,
+          dbClient: options.dbClient,
+          workingDir: topDir,
+          lockTimeout: effectiveLockTimeout,
+        });
+      }
 
       const changeDuration = Date.now() - changeStartTime;
 

@@ -332,4 +332,63 @@ export class PsqlRunner {
       });
     });
   }
+
+  /**
+   * Execute pre-assembled SQL content via psql's stdin.
+   *
+   * Used when snapshot include resolution has already inlined all \i/\ir
+   * directives — the assembled content is piped to psql via stdin instead
+   * of passing a file with -f.
+   *
+   * @param content — the full SQL to execute
+   * @param options — connection URI, variables, transaction mode, etc.
+   * @returns exit code, captured stdout/stderr, and parsed error (if any)
+   */
+  async runContent(content: string, options: PsqlRunOptions): Promise<PsqlRunResult> {
+    const cmd = buildPsqlCommand("__stdin__", options, this.defaultBin);
+    // Remove the -f __stdin__ pair — we'll feed content via stdin instead
+    const fIdx = cmd.args.indexOf("-f");
+    if (fIdx !== -1) {
+      cmd.args.splice(fIdx, 2);
+    }
+
+    return new Promise<PsqlRunResult>((resolve, reject) => {
+      const child = this.spawnFn(cmd.bin, cmd.args, {
+        cwd: cmd.cwd,
+        env: { ...process.env, ...cmd.env },
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString();
+      });
+
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+
+      child.on("error", (err) => {
+        reject(err);
+      });
+
+      child.on("close", (code) => {
+        const exitCode = code ?? 1;
+        const error = exitCode !== 0 ? parsePsqlStderr(stderr) : undefined;
+
+        resolve({
+          exitCode,
+          stdout,
+          stderr,
+          error,
+        });
+      });
+
+      // Write content to stdin and close
+      child.stdin?.write(content);
+      child.stdin?.end();
+    });
+  }
 }
