@@ -1,30 +1,14 @@
 // tests/integration/lifecycle.test.ts — end-to-end lifecycle test
 //
-// Exercises the full init → add → deploy → status → revert cycle against
-// a real PostgreSQL database.
+// Exercises the full init → add → deploy → verify → status → revert cycle
+// against a real PostgreSQL database.
 //
 // Prerequisites:
 //   - PostgreSQL reachable at localhost:5417 (docker compose up)
 //   - Password: test, user: postgres
-//
-// NOTE: The deploy, status, and revert commands are being implemented in
-// parallel (issues #33 and #34). Until they land, the lifecycle test is
-// marked with `.todo` so the test suite still passes. The helpers and
-// infrastructure are fully functional — only the lifecycle scenario itself
-// needs the missing commands.
-//
-// What must be true for the test to pass once deploy/revert are implemented:
-//   1. `sqlever deploy --db-uri <uri>` connects, creates the sqitch registry,
-//      reads sqitch.plan, and executes each pending deploy/*.sql script.
-//   2. After deploy, sqitch.changes contains one row per deployed change and
-//      sqitch.events has a corresponding "deploy" event.
-//   3. `sqlever status --db-uri <uri>` reports the current deployment state.
-//   4. `sqlever revert -y --db-uri <uri>` executes each revert/*.sql script
-//      in reverse order, deletes the change from sqitch.changes, and inserts
-//      a "revert" event into sqitch.events.
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -33,6 +17,7 @@ import {
   teardownTestDb,
   runSqlever,
   queryDb,
+  pgUri,
 } from "./helpers";
 
 // ---------------------------------------------------------------------------
@@ -125,14 +110,8 @@ describe("integration: init + add", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Full lifecycle: init → add → deploy → status → revert
+// Full lifecycle: init → add → deploy → verify → status → revert
 // ---------------------------------------------------------------------------
-//
-// This test is marked .todo because deploy, status, and revert are not yet
-// implemented (issues #33, #34). Remove .todo once those commands land.
-//
-// The test body below is the intended scenario. When deploy/revert are
-// ready, simply change `test.todo(...)` to `test(...)`.
 
 describe("integration: full lifecycle", () => {
   let tmpDir: string;
@@ -148,126 +127,134 @@ describe("integration: full lifecycle", () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  // TODO(#33, #34): Replace test.todo with test once deploy/revert are
-  // implemented. The test body below is the intended scenario.
-  //
-  // To activate: change `test.todo` to `test`, uncomment the function body,
-  // and add these imports at the top of the file:
-  //   import { writeFile } from "node:fs/promises";
-  //   import { pgUri } from "./helpers";
-  //
-  // Intended test body:
-  //
-  //   async () => {
-  //     const dbUri = pgUri(dbName);
-  //
-  //     // Step 1: init
-  //     const initResult = await runSqlever([
-  //       "init", "testproject", "--top-dir", tmpDir,
-  //     ]);
-  //     expect(initResult.exitCode).toBe(0);
-  //
-  //     // Step 2: add create_users with a real deploy script
-  //     const addResult = await runSqlever([
-  //       "add", "create_users", "-n", "add users table", "--top-dir", tmpDir,
-  //     ]);
-  //     expect(addResult.exitCode).toBe(0);
-  //
-  //     await writeFile(
-  //       join(tmpDir, "deploy", "create_users.sql"),
-  //       [
-  //         "-- Deploy create_users",
-  //         "BEGIN;",
-  //         "",
-  //         "CREATE TABLE public.users (",
-  //         "    id    SERIAL PRIMARY KEY,",
-  //         "    name  TEXT NOT NULL,",
-  //         "    email TEXT NOT NULL UNIQUE",
-  //         ");",
-  //         "",
-  //         "COMMIT;",
-  //       ].join("\n"),
-  //     );
-  //
-  //     await writeFile(
-  //       join(tmpDir, "revert", "create_users.sql"),
-  //       [
-  //         "-- Revert create_users",
-  //         "BEGIN;",
-  //         "",
-  //         "DROP TABLE IF EXISTS public.users;",
-  //         "",
-  //         "COMMIT;",
-  //       ].join("\n"),
-  //     );
-  //
-  //     // Step 3: deploy
-  //     const deployResult = await runSqlever([
-  //       "deploy", "--db-uri", dbUri, "--top-dir", tmpDir,
-  //     ]);
-  //     expect(deployResult.exitCode).toBe(0);
-  //
-  //     // Step 4: verify database state after deploy
-  //     // 4a. users table exists
-  //     const tables = await queryDb<{ tablename: string }>(
-  //       dbName,
-  //       "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users'",
-  //     );
-  //     expect(tables).toHaveLength(1);
-  //     expect(tables[0]!.tablename).toBe("users");
-  //
-  //     // 4b. sqitch.changes has an entry
-  //     const changes = await queryDb<{ change: string; project: string }>(
-  //       dbName,
-  //       "SELECT change, project FROM sqitch.changes WHERE project = 'testproject'",
-  //     );
-  //     expect(changes).toHaveLength(1);
-  //     expect(changes[0]!.change).toBe("create_users");
-  //
-  //     // 4c. sqitch.events has a deploy event
-  //     const deployEvents = await queryDb<{ event: string; change: string }>(
-  //       dbName,
-  //       "SELECT event, change FROM sqitch.events WHERE project = 'testproject' AND event = 'deploy'",
-  //     );
-  //     expect(deployEvents).toHaveLength(1);
-  //     expect(deployEvents[0]!.change).toBe("create_users");
-  //
-  //     // Step 5: status
-  //     const statusResult = await runSqlever([
-  //       "status", "--db-uri", dbUri, "--top-dir", tmpDir,
-  //     ]);
-  //     expect(statusResult.exitCode).toBe(0);
-  //     expect(statusResult.stdout).toContain("create_users");
-  //
-  //     // Step 6: revert
-  //     const revertResult = await runSqlever([
-  //       "revert", "-y", "--db-uri", dbUri, "--top-dir", tmpDir,
-  //     ]);
-  //     expect(revertResult.exitCode).toBe(0);
-  //
-  //     // Step 7: verify database state after revert
-  //     // 7a. users table gone
-  //     const tablesAfter = await queryDb<{ tablename: string }>(
-  //       dbName,
-  //       "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users'",
-  //     );
-  //     expect(tablesAfter).toHaveLength(0);
-  //
-  //     // 7b. sqitch.changes empty
-  //     const changesAfter = await queryDb<{ change: string }>(
-  //       dbName,
-  //       "SELECT change FROM sqitch.changes WHERE project = 'testproject'",
-  //     );
-  //     expect(changesAfter).toHaveLength(0);
-  //
-  //     // 7c. sqitch.events has both deploy and revert
-  //     const allEvents = await queryDb<{ event: string; change: string }>(
-  //       dbName,
-  //       "SELECT event, change FROM sqitch.events WHERE project = 'testproject' ORDER BY committed_at",
-  //     );
-  //     expect(allEvents).toHaveLength(2);
-  //     expect(allEvents[0]!.event).toBe("deploy");
-  //     expect(allEvents[1]!.event).toBe("revert");
-  //   }
-  test.todo("init → add → deploy → status → revert lifecycle", () => {});
+  test("init → add → deploy → verify → status → revert lifecycle", async () => {
+    const dbUri = pgUri(dbName);
+
+    // Step 1: init
+    const initResult = await runSqlever([
+      "init", "testproject", "--top-dir", tmpDir,
+    ]);
+    expect(initResult.exitCode).toBe(0);
+
+    // Step 2: add create_users with real SQL scripts
+    const addResult = await runSqlever([
+      "add", "create_users", "-n", "users table", "--top-dir", tmpDir,
+    ]);
+    expect(addResult.exitCode).toBe(0);
+
+    // Write a real deploy script (CREATE TABLE)
+    await writeFile(
+      join(tmpDir, "deploy", "create_users.sql"),
+      [
+        "-- Deploy create_users",
+        "BEGIN;",
+        "",
+        "CREATE TABLE public.users (",
+        "    id    SERIAL PRIMARY KEY,",
+        "    name  TEXT NOT NULL,",
+        "    email TEXT NOT NULL UNIQUE",
+        ");",
+        "",
+        "COMMIT;",
+      ].join("\n"),
+    );
+
+    // Write a real revert script (DROP TABLE)
+    await writeFile(
+      join(tmpDir, "revert", "create_users.sql"),
+      [
+        "-- Revert create_users",
+        "BEGIN;",
+        "",
+        "DROP TABLE IF EXISTS public.users;",
+        "",
+        "COMMIT;",
+      ].join("\n"),
+    );
+
+    // Write a real verify script (SELECT)
+    await writeFile(
+      join(tmpDir, "verify", "create_users.sql"),
+      [
+        "-- Verify create_users",
+        "SELECT id, name, email FROM public.users WHERE FALSE;",
+      ].join("\n"),
+    );
+
+    // Step 3: deploy
+    const deployResult = await runSqlever([
+      "deploy", "--db-uri", dbUri, "--top-dir", tmpDir,
+    ]);
+    expect(deployResult.exitCode).toBe(0);
+
+    // Step 4: verify database state after deploy
+    // 4a. users table exists
+    const tables = await queryDb<{ tablename: string }>(
+      dbName,
+      "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users'",
+    );
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.tablename).toBe("users");
+
+    // 4b. sqitch.changes has exactly 1 entry
+    const changes = await queryDb<{ change: string; project: string }>(
+      dbName,
+      "SELECT change, project FROM sqitch.changes WHERE project = 'testproject'",
+    );
+    expect(changes).toHaveLength(1);
+    expect(changes[0]!.change).toBe("create_users");
+
+    // 4c. sqitch.events has exactly 1 deploy event
+    const deployEvents = await queryDb<{ event: string; change: string }>(
+      dbName,
+      "SELECT event, change FROM sqitch.events WHERE project = 'testproject' AND event = 'deploy'",
+    );
+    expect(deployEvents).toHaveLength(1);
+    expect(deployEvents[0]!.change).toBe("create_users");
+
+    // Step 5: verify passes
+    const verifyResult = await runSqlever([
+      "verify", "--db-uri", dbUri, "--top-dir", tmpDir,
+    ]);
+    expect(verifyResult.exitCode).toBe(0);
+
+    // Step 6: status shows 0 pending (change is deployed)
+    const statusResult = await runSqlever([
+      "status", "--db-uri", dbUri, "--top-dir", tmpDir,
+    ]);
+    expect(statusResult.exitCode).toBe(0);
+    expect(statusResult.stdout).toContain("create_users");
+
+    // Step 7: revert
+    const revertResult = await runSqlever([
+      "revert", "-y", "--db-uri", dbUri, "--top-dir", tmpDir,
+    ]);
+    expect(revertResult.exitCode).toBe(0);
+
+    // Step 8: verify database state after revert
+    // 8a. users table gone
+    const tablesAfter = await queryDb<{ tablename: string }>(
+      dbName,
+      "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users'",
+    );
+    expect(tablesAfter).toHaveLength(0);
+
+    // 8b. sqitch.changes is empty for this project
+    const changesAfter = await queryDb<{ change: string }>(
+      dbName,
+      "SELECT change FROM sqitch.changes WHERE project = 'testproject'",
+    );
+    expect(changesAfter).toHaveLength(0);
+
+    // 8c. sqitch.events has both deploy and revert events
+    const allEvents = await queryDb<{ event: string; change: string }>(
+      dbName,
+      "SELECT event, change FROM sqitch.events WHERE project = 'testproject' ORDER BY committed_at",
+    );
+    expect(allEvents).toHaveLength(2);
+    expect(allEvents[0]!.event).toBe("deploy");
+    expect(allEvents[0]!.change).toBe("create_users");
+    expect(allEvents[1]!.event).toBe("revert");
+    expect(allEvents[1]!.change).toBe("create_users");
+  }, 30_000);
 });
