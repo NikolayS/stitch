@@ -134,6 +134,41 @@ describe("parsePlan — pragmas", () => {
     const plan = parsePlan(minimalPlan());
     expect(plan.project.uri).toBeUndefined();
   });
+
+  it("accepts %syntax-version=1.0.0", () => {
+    const plan = parsePlan(minimalPlan());
+    expect(plan.pragmas.get("syntax-version")).toBe("1.0.0");
+  });
+
+  it("accepts %syntax-version=1", () => {
+    const content = "%syntax-version=1\n%project=testproject\n";
+    const plan = parsePlan(content);
+    expect(plan.pragmas.get("syntax-version")).toBe("1");
+  });
+
+  it("accepts %syntax-version=1.1.0", () => {
+    const content = "%syntax-version=1.1.0\n%project=testproject\n";
+    const plan = parsePlan(content);
+    expect(plan.pragmas.get("syntax-version")).toBe("1.1.0");
+  });
+
+  it("rejects %syntax-version=2.0.0", () => {
+    const content = "%syntax-version=2.0.0\n%project=testproject\n";
+    expect(() => parsePlan(content)).toThrow(PlanParseError);
+    expect(() => parsePlan(content)).toThrow("Unsupported %syntax-version '2.0.0'");
+  });
+
+  it("rejects %syntax-version=0.9", () => {
+    const content = "%syntax-version=0.9\n%project=testproject\n";
+    expect(() => parsePlan(content)).toThrow(PlanParseError);
+    expect(() => parsePlan(content)).toThrow("Unsupported %syntax-version '0.9'");
+  });
+
+  it("rejects %syntax-version with non-numeric value", () => {
+    const content = "%syntax-version=abc\n%project=testproject\n";
+    expect(() => parsePlan(content)).toThrow(PlanParseError);
+    expect(() => parsePlan(content)).toThrow("Unsupported %syntax-version 'abc'");
+  });
 });
 
 // ---------------------------------------------------------------------------

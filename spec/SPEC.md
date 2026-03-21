@@ -140,6 +140,8 @@ In the agentic development era, engineers increasingly have AI assistants writin
 - GUI or web dashboard — CLI only, composable with other tools
 - Cloud-hosted service — out of scope for now
 - Replacing application-level migration frameworks for teams already happy with them
+- Windows support — not a target for v1.x. Unix-like systems (Linux, macOS) only.
+- Declarative schema management — sqlever is an imperative migration tool (deploy/revert scripts). Automatic diff-based schema generation (a la Atlas, Prisma Migrate) is out of scope.
 
 ---
 

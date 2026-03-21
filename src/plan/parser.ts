@@ -230,6 +230,20 @@ export function parsePlan(content: string): Plan {
     }
   }
 
+  // Validate %syntax-version pragma
+  const syntaxVersion = pragmas.get("syntax-version");
+  if (syntaxVersion !== undefined) {
+    // Extract major version: "1" or "1.0.0" -> major = 1
+    const major = parseInt(syntaxVersion.split(".")[0] ?? "", 10);
+    if (isNaN(major) || major !== 1) {
+      throw new PlanParseError(
+        `Unsupported %syntax-version '${syntaxVersion}'. Only syntax-version 1.x is supported.`,
+        0,
+        `%syntax-version=${syntaxVersion}`,
+      );
+    }
+  }
+
   // Build project from pragmas
   const projectName = pragmas.get("project");
   if (!projectName) {

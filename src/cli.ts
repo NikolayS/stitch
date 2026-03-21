@@ -15,6 +15,7 @@ import { parseShowArgs, runShow } from "./commands/show";
 import { runPlan } from "./commands/plan";
 import { runVerify } from "./commands/verify";
 import { parseAnalyzeArgs, runAnalyze } from "./commands/analyze";
+import { runDoctor } from "./commands/doctor";
 
 // ---------------------------------------------------------------------------
 // Command registry — all commands from SPEC R1 plus sqlever extensions
@@ -45,6 +46,7 @@ const COMMANDS: Record<string, string> = {
   review: "Review migrations for issues",
   batch: "Manage batched background data migrations",
   diff: "Show differences between plan states",
+  doctor: "Validate project setup, plan file, and script consistency",
   help: "Show help for a command",
 };
 
@@ -418,6 +420,12 @@ export function main(argv: string[] = process.argv.slice(2)): void {
     runAnalyze(analyzeOpts)
       .then((result) => { if (result.exitCode !== 0) process.exit(result.exitCode); })
       .catch((err: unknown) => { process.stderr.write(`sqlever analyze: ${err instanceof Error ? err.message : String(err)}\n`); process.exit(1); });
+    return;
+  }
+
+  if (args.command === "doctor") {
+    const exitCode = runDoctor(args);
+    if (exitCode !== 0) process.exit(exitCode);
     return;
   }
 
