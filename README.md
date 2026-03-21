@@ -17,12 +17,10 @@ Sqitch-compatible PostgreSQL migration tool with static analysis.
 
 ## Quick start
 
-Install:
+Install (see [Distribution](#distribution) for all options):
 
 ```bash
 npm install -g sqlever
-# or
-brew install sqlever
 ```
 
 Create a project, add a migration, deploy, and analyze:
@@ -56,6 +54,35 @@ sqlever verify db:pg://localhost/myapp
 sqlever status db:pg://localhost/myapp
 ```
 
+## Features
+
+### Snapshot includes
+
+Deploy scripts that use `\i` or `\ir` to include shared SQL files get automatic git-correlated resolution. When sqlever deploys a migration, each `\i` resolves to the file version from when the migration was written, not the current HEAD. This means deploying on a fresh database produces the same result as deploying when the migration was originally written, even if the included files have changed since.
+
+```sql
+-- deploy/add_audit_trigger.sql
+BEGIN;
+\ir ../shared/audit_trigger.sql
+COMMIT;
+```
+
+When this migration was added on January 15, `shared/audit_trigger.sql` contained v1 of the trigger function. By March, that file was rewritten for v2. Without snapshot includes, deploying on a fresh database would apply v2 of the trigger with v1's assumptions -- a subtle and dangerous mismatch. sqlever resolves `\ir ../shared/audit_trigger.sql` to the January 15 version automatically.
+
+Pass `--no-snapshot` to disable this behavior and use current HEAD versions (Sqitch-compatible).
+
+### TUI deploy dashboard
+
+When stdout is a TTY, `sqlever deploy` shows a live-updating progress dashboard with per-change status, timing, analysis warnings, and a progress bar. Pipe-friendly plain text output is used automatically when stdout is not a TTY, or when `--no-tui` is passed.
+
+### Static analysis at deploy time
+
+`sqlever deploy` runs all 22 analysis rules before executing SQL and blocks on error-severity findings. Bypass with `--force`. Run standalone with `sqlever analyze` against any `.sql` file or directory -- no `sqitch.plan` required.
+
+### Project health checks
+
+`sqlever doctor` validates your project setup in one command: plan file parsing, change ID chain consistency, script file presence, psql metacommand detection, and syntax version checks.
+
 ## Commands
 
 All Sqitch commands are supported with identical flags and semantics, plus sqlever extensions.
@@ -74,6 +101,8 @@ All Sqitch commands are supported with identical flags and semantics, plus sqlev
 | `sqlever show` | Display change/tag details or script contents |
 | `sqlever plan` | Display plan contents |
 | `sqlever analyze` | Analyze migration SQL for dangerous patterns |
+| `sqlever doctor` | Validate project setup, plan file, and script consistency |
+| `sqlever diff` | Show pending changes or differences between two tags |
 
 All commands support `--format json` for machine-readable output.
 
@@ -205,6 +234,42 @@ severity = "off"               # disable a specific rule
 [analysis.overrides."deploy/seed_data.sql"]
 skip = ["SA010"]               # suppress per file
 ```
+
+## Distribution
+
+### npm
+
+```bash
+npm install -g sqlever
+```
+
+### Docker
+
+```bash
+docker run --rm sqlever/sqlever deploy db:pg://host.docker.internal/myapp
+```
+
+The image is based on Alpine with `psql` included.
+
+### GitHub Releases
+
+Pre-built binaries for 4 platforms are attached to every [GitHub Release](https://github.com/NikolayS/sqlever/releases):
+
+| Binary | Platform |
+|--------|----------|
+| `sqlever-linux-amd64` | Linux x86_64 |
+| `sqlever-linux-arm64` | Linux ARM64 |
+| `sqlever-macos-amd64` | macOS x86_64 |
+| `sqlever-macos-arm64` | macOS Apple Silicon |
+
+### Build from source
+
+```bash
+bun install
+bun build src/cli.ts --compile --outfile dist/sqlever
+```
+
+The output is a single self-contained binary with no runtime dependencies.
 
 ## Contributing
 
