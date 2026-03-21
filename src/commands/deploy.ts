@@ -18,8 +18,9 @@ import type { Change, Plan, Tag } from "../plan/types";
 import { PsqlRunner, type PsqlRunResult } from "../psql";
 import { shouldSetLockTimeout } from "../lock-guard";
 import { shutdownManager } from "../signals";
-import { info, error as logError, verbose } from "../output";
+import { info, error as logError, verbose, getConfig } from "../output";
 import { sqitchToStandard } from "../db/uri";
+import { DeployProgress, shouldUseTUI } from "../tui/deploy";
 
 // ---------------------------------------------------------------------------
 // Exit codes (SPEC R6)
@@ -87,6 +88,8 @@ export interface DeployOptions {
   committerName: string;
   /** Committer email (from git config or env). */
   committerEmail: string;
+  /** Disable TUI dashboard even when stdout is a TTY. */
+  noTui: boolean;
 }
 
 /**
@@ -99,6 +102,7 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
   let verify: boolean | undefined;
   let dbClient: string | undefined;
   let lockTimeout: number | undefined;
+  let noTui = false;
   const variables: Record<string, string> = {};
 
   const rest = args.rest;
@@ -172,6 +176,11 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
         throw new Error("--lock-timeout requires a value in milliseconds");
       }
       lockTimeout = parseInt(val, 10);
+      i++;
+      continue;
+    }
+    if (token === "--no-tui") {
+      noTui = true;
       i++;
       continue;
     }
@@ -256,6 +265,7 @@ export function parseDeployOptions(args: ParsedArgs): DeployOptions {
     projectDir,
     committerName,
     committerEmail,
+    noTui,
   };
 }
 
@@ -439,12 +449,26 @@ export async function executeDeploy(
     // Build tag lookup: change_id -> tags attached to it
     const changeTagMap = buildChangeTagMap(plan);
 
+    // 9. Set up TUI progress dashboard
+    const outputCfg = getConfig();
+    const useTUI = shouldUseTUI({ noTui: options.noTui, quiet: outputCfg.quiet });
+    const progress = new DeployProgress({ isTTY: useTUI });
+    const deployStartTime = Date.now();
+    progress.start(sortedChanges.length);
+
     // 10. Execute each pending change
     let deployedCount = 0;
+    let failedCount = 0;
 
     for (const change of sortedChanges) {
       // Check for shutdown request
       if (shutdownMgr.isShuttingDown()) {
+        progress.finish({
+          totalDeployed: deployedCount,
+          totalFailed: failedCount,
+          totalSkipped: 0,
+          elapsedMs: Date.now() - deployStartTime,
+        });
         return {
           deployed: deployedCount,
           skipped: 0,
@@ -455,6 +479,14 @@ export async function executeDeploy(
 
       const deployScript = scriptPath(topDir, deployDir, change.name);
       if (!existsSync(deployScript)) {
+        progress.updateChange(change.name, "failed");
+        failedCount++;
+        progress.finish({
+          totalDeployed: deployedCount,
+          totalFailed: failedCount,
+          totalSkipped: 0,
+          elapsedMs: Date.now() - deployStartTime,
+        });
         return {
           deployed: deployedCount,
           skipped: 0,
@@ -478,7 +510,13 @@ export async function executeDeploy(
       // Determine transaction mode for psql
       const useSingleTransaction = !noTransaction && options.mode === "change";
 
-      info(`Deploying change: ${change.name}`);
+      // Mark change as running in TUI
+      progress.updateChange(change.name, "running");
+      const changeStartTime = Date.now();
+
+      if (!useTUI) {
+        info(`Deploying change: ${change.name}`);
+      }
 
       // Execute via psql
       const psqlResult = await psqlRunner.run(deployScript, {
@@ -490,9 +528,13 @@ export async function executeDeploy(
         lockTimeout: effectiveLockTimeout,
       });
 
+      const changeDuration = Date.now() - changeStartTime;
+
       if (psqlResult.exitCode !== 0) {
         // Deploy script failed
         const errMsg = psqlResult.error?.message ?? psqlResult.stderr;
+        progress.updateChange(change.name, "failed", changeDuration);
+        failedCount++;
         logError(`Deploy failed on change "${change.name}": ${errMsg}`);
 
         // Record fail event
@@ -517,6 +559,13 @@ export async function executeDeploy(
           // Best effort — don't mask the original error
         }
 
+        progress.finish({
+          totalDeployed: deployedCount,
+          totalFailed: failedCount,
+          totalSkipped: 0,
+          elapsedMs: Date.now() - deployStartTime,
+        });
+
         return {
           deployed: deployedCount,
           skipped: 0,
@@ -525,6 +574,9 @@ export async function executeDeploy(
           error: errMsg,
         };
       }
+
+      // Mark change as done in TUI
+      progress.updateChange(change.name, "done", changeDuration);
 
       // Record successful deploy in tracking tables
       const recordInput: RecordDeployInput = {
@@ -584,6 +636,12 @@ export async function executeDeploy(
           if (verifyResult.exitCode !== 0) {
             const errMsg = verifyResult.error?.message ?? verifyResult.stderr;
             logError(`Verify failed for change "${change.name}": ${errMsg}`);
+            progress.finish({
+              totalDeployed: deployedCount,
+              totalFailed: 1,
+              totalSkipped: 0,
+              elapsedMs: Date.now() - deployStartTime,
+            });
             return {
               deployed: deployedCount,
               skipped: 0,
@@ -597,7 +655,15 @@ export async function executeDeploy(
     }
 
     // 11. Print summary
-    info(`Deployed ${deployedCount} change(s) successfully.`);
+    progress.finish({
+      totalDeployed: deployedCount,
+      totalFailed: failedCount,
+      totalSkipped: 0,
+      elapsedMs: Date.now() - deployStartTime,
+    });
+    if (!useTUI) {
+      info(`Deployed ${deployedCount} change(s) successfully.`);
+    }
 
     return { deployed: deployedCount, skipped: 0, dryRun: false };
   } finally {
