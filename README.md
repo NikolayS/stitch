@@ -1,10 +1,9 @@
-# sqlever
+# sqlever -- Sqitch-compatible PostgreSQL migration tool
 
-Sqitch-compatible PostgreSQL migration tool with static analysis.
+[![CI](https://github.com/NikolayS/sqlever/actions/workflows/ci.yml/badge.svg)](https://github.com/NikolayS/sqlever/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/sqlever)](https://www.npmjs.com/package/sqlever) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE) [![Bun](https://img.shields.io/badge/bun-1.1%2B-orange.svg)](https://bun.sh)
+<!-- TODO: add codecov badge once coverage reporting is wired up -->
 
-[![CI](https://github.com/NikolayS/sqlever/actions/workflows/ci.yml/badge.svg)](https://github.com/NikolayS/sqlever/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/sqlever)](https://www.npmjs.com/package/sqlever)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+Sqitch-compatible PostgreSQL migration tool with static analysis, expand/contract support, batched DML, and AI-powered explanations.
 
 ---
 
@@ -12,6 +11,9 @@ Sqitch-compatible PostgreSQL migration tool with static analysis.
 
 - **Sqitch compatible** -- drop-in CLI replacement. Existing `sqitch.plan` files, tracking schemas, and workflows work unchanged.
 - **Static analysis built in** -- 22 rules catch dangerous migration patterns (lock-heavy DDL, data loss, table rewrites) before deploy, not after.
+- **Expand/contract migrations** -- generate paired expand + contract changes with bidirectional sync triggers.
+- **Batched DML** -- backfill millions of rows without locking, with replication lag and VACUUM pressure monitoring.
+- **AI-powered** -- `sqlever explain` summarizes migrations in plain English; `sqlever review` generates structured PR comments.
 - **Single binary** -- compiled with Bun, no runtime dependencies. Sub-50ms startup. No Perl, no JVM, no Docker required.
 - **100% open source** -- every feature ships under Apache 2.0. No paywalled "Pro" tier for safety rules or CI integrations.
 
@@ -20,7 +22,15 @@ Sqitch-compatible PostgreSQL migration tool with static analysis.
 Install (see [Distribution](#distribution) for all options):
 
 ```bash
+# Run without installing
+npx sqlever --help
+bunx sqlever --help
+
+# Install globally
 npm install -g sqlever
+
+# Or download binary from GitHub Releases
+# https://github.com/NikolayS/sqlever/releases
 ```
 
 Create a project, add a migration, deploy, and analyze:
@@ -53,6 +63,12 @@ sqlever verify db:pg://localhost/myapp
 # Check status
 sqlever status db:pg://localhost/myapp
 ```
+
+<!-- GIF demos rendered from demos/*.tape with https://github.com/charmbracelet/vhs -->
+<!-- Uncomment once GIFs are rendered:
+![Deploy demo](demos/demo1_deploy.gif)
+![Analyze demo](demos/demo2_analyze.gif)
+-->
 
 ## Features
 
@@ -103,6 +119,10 @@ All Sqitch commands are supported with identical flags and semantics, plus sqlev
 | `sqlever analyze` | Analyze migration SQL for dangerous patterns |
 | `sqlever doctor` | Validate project setup, plan file, and script consistency |
 | `sqlever diff` | Show pending changes or differences between two tags |
+| `sqlever batch` | Run batched DML with progress, lag monitoring, and backpressure |
+| `sqlever explain` | AI-powered plain-English summary of a migration file |
+| `sqlever review` | Generate structured PR review comments from analysis findings |
+| `sqlever deploy --dblab` | Deploy against a DBLab thin clone for safe testing |
 
 All commands support `--format json` for machine-readable output.
 
@@ -197,8 +217,9 @@ alias sqitch=sqlever
 | Runtime | Single binary (Bun) | Perl + CPAN | Go binary | JVM |
 | License | Apache 2.0 (all features) | MIT | Apache 2.0 (core) + proprietary Pro | Apache 2.0 (Community) |
 | Non-transactional DDL | Write-ahead tracking with crash recovery | Manual | `--tx-mode none` (no recovery) | Manual |
-| Expand/contract | Planned (v2.0) | None | None | None |
-| Batched DML | Planned (v2.1) | None | None | None |
+| Expand/contract | Built in (sync triggers, phase tracking) | None | None | None |
+| Batched DML | Built in (PGQ, lag monitoring, backpressure) | None | None | None |
+| AI explanations | Built in (`explain`, `review`) | None | None | None |
 
 ## Configuration
 
